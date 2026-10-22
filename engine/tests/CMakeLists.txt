@@ -8,7 +8,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(engine_tests
-    graph_test.cpp
+    grafo_test.cpp
+    tads_test.cpp
     bfs_test.cpp
     dfs_test.cpp
     dijkstra_test.cpp

@@ -12,15 +12,23 @@ using emscripten::val;
 
 namespace {
 
-gv::Graph graphFromJs(const val& desc) {
-    gv::Graph graph(desc["nodeCount"].as<int>(), desc["directed"].as<bool>());
+// Grafo no es copiable, así que en vez de devolverlo se construye acá y se
+// le pasa al algoritmo.
+template <typename Algorithm>
+val withGraph(const val& desc, Algorithm run) {
+    gv::Grafo graph(desc["nodeCount"].as<int>());
+    const bool directed = desc["directed"].as<bool>();
     const val edges = desc["edges"];
     const auto count = edges["length"].as<unsigned>();
     for (unsigned i = 0; i < count; ++i) {
         const val e = edges[i];
-        graph.addEdge(e["from"].as<int>(), e["to"].as<int>(), e["weight"].as<double>());
+        const int from = e["from"].as<int>();
+        const int to = e["to"].as<int>();
+        const double weight = e["weight"].as<double>();
+        if (directed) graph.agregarArista(from, to, weight);
+        else graph.agregarAristaNoDirigida(from, to, weight);
     }
-    return graph;
+    return run(graph);
 }
 
 val stepsToJs(const gv::Steps& steps) {
@@ -36,10 +44,14 @@ val stepsToJs(const gv::Steps& steps) {
     return out;
 }
 
-val runBfs(const val& desc, int source) { return stepsToJs(gv::bfs(graphFromJs(desc), source)); }
-val runDfs(const val& desc, int source) { return stepsToJs(gv::dfs(graphFromJs(desc), source)); }
+val runBfs(const val& desc, int source) {
+    return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::bfs(g, source)); });
+}
+val runDfs(const val& desc, int source) {
+    return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::dfs(g, source)); });
+}
 val runDijkstra(const val& desc, int source, int target) {
-    return stepsToJs(gv::dijkstra(graphFromJs(desc), source, target));
+    return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::dijkstra(g, source, target)); });
 }
 
 } // namespace

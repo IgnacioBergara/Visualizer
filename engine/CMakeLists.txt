@@ -17,7 +17,6 @@ endif()
 # Núcleo: C++ puro, sin dependencias de Emscripten. Se compila igual para
 # WebAssembly que para nativo.
 add_library(gv_core
-    src/graph.cpp
     src/algorithms/bfs.cpp
     src/algorithms/dfs.cpp
     src/algorithms/dijkstra.cpp

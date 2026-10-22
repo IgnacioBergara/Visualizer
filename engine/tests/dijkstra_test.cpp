@@ -8,18 +8,18 @@
 namespace {
 
 // 0-1 (peso 1), 1-2 (peso 1) y el atajo 0-2 (peso 5).
-gv::Graph triangle() {
-    gv::Graph g(3);
-    g.addEdge(0, 1, 1.0);
-    g.addEdge(1, 2, 1.0);
-    g.addEdge(0, 2, 5.0);
-    return g;
+void buildTriangle(gv::Grafo& g) {
+    g.agregarAristaNoDirigida(0, 1, 1.0);
+    g.agregarAristaNoDirigida(1, 2, 1.0);
+    g.agregarAristaNoDirigida(0, 2, 5.0);
 }
 
 } // namespace
 
 TEST_CASE("Dijkstra prefiere el camino más barato aunque tenga más aristas") {
-    auto path = stepsOfType(gv::dijkstra(triangle(), 0, 2), gv::StepType::PathEdge);
+    gv::Grafo g(3);
+    buildTriangle(g);
+    auto path = stepsOfType(gv::dijkstra(g, 0, 2), gv::StepType::PathEdge);
 
     REQUIRE(path.size() == 2);
     CHECK(std::pair{path[0].node, path[0].target} == std::pair{0, 1});
@@ -28,21 +28,33 @@ TEST_CASE("Dijkstra prefiere el camino más barato aunque tenga más aristas") {
 }
 
 TEST_CASE("Dijkstra visita los nodos en orden de distancia") {
-    CHECK(visitOrder(gv::dijkstra(triangle(), 0)) == std::vector<int>{0, 1, 2});
+    gv::Grafo g(3);
+    buildTriangle(g);
+    CHECK(visitOrder(gv::dijkstra(g, 0)) == std::vector<int>{0, 1, 2});
 }
 
 TEST_CASE("Dijkstra se detiene al llegar al destino") {
-    gv::Graph g(4);
-    g.addEdge(0, 1, 1.0);
-    g.addEdge(1, 2, 1.0);
-    g.addEdge(2, 3, 1.0);
+    gv::Grafo g(4);
+    g.agregarAristaNoDirigida(0, 1, 1.0);
+    g.agregarAristaNoDirigida(1, 2, 1.0);
+    g.agregarAristaNoDirigida(2, 3, 1.0);
 
     CHECK(visitOrder(gv::dijkstra(g, 0, 1)) == std::vector<int>{0, 1});
 }
 
 TEST_CASE("Dijkstra no emite camino si el destino es inalcanzable") {
-    gv::Graph g(3);
-    g.addEdge(0, 1, 1.0);
+    gv::Grafo g(3);
+    g.agregarAristaNoDirigida(0, 1, 1.0);
 
     CHECK(stepsOfType(gv::dijkstra(g, 0, 2), gv::StepType::PathEdge).empty());
+}
+
+TEST_CASE("Dijkstra no desborda el MinHeap en un grafo completo") {
+    // Grafo completo dirigido con pesos decrecientes: fuerza muchas relajaciones.
+    gv::Grafo g(6);
+    for (int u = 0; u < 6; ++u)
+        for (int v = 0; v < 6; ++v)
+            if (u != v) g.agregarArista(u, v, 10.0 - u - v);
+
+    CHECK(visitOrder(gv::dijkstra(g, 0)).size() == 6);
 }

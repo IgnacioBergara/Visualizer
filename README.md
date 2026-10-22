@@ -32,7 +32,8 @@ Para agregar un algoritmo:
 
 ```
 engine/                  C++ (sin dependencias de la web)
-  include/gv/            Graph, Step, algoritmos
+  include/gv/            Grafo, Step, algoritmos
+  include/gv/tads/       Cola, Pila, MinHeap, MFSet (TADs propios)
   src/                   implementación
   bindings/              puente embind → JavaScript
   tests/                 Catch2
