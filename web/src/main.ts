@@ -32,7 +32,11 @@ const player = new Player((position, total, playing) => {
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;
-  ui.description.textContent = describeStep(steps[position - 1], labels);
+  ui.description.textContent = describeStep(
+    steps[position - 1],
+    labels,
+    ui.algorithm.value as AlgorithmId,
+  );
   ui.play.textContent = playing ? "⏸" : "▶";
   ui.back.disabled = position === 0;
   ui.forward.disabled = position === total;

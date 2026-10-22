@@ -1,4 +1,4 @@
-import type { Step } from "../engine/types";
+import type { AlgorithmId, Step } from "../engine/types";
 
 export type EdgeKey = string;
 
@@ -16,7 +16,8 @@ export interface VisualState {
   finished: Set<number>;
   treeEdges: Set<EdgeKey>;
   pathEdges: Set<EdgeKey>;
-  distances: Map<number, number>;
+  /** Número que se muestra bajo cada nodo: nivel (BFS), profundidad (DFS) o distancia (Dijkstra). */
+  nodeValues: Map<number, number>;
 }
 
 // Recalcular desde cero en cada paso es O(pasos), de sobra para grafos
@@ -30,7 +31,7 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
     finished: new Set(),
     treeEdges: new Set(),
     pathEdges: new Set(),
-    distances: new Map(),
+    nodeValues: new Map(),
   };
   const parent = new Map<number, number>();
 
@@ -39,11 +40,12 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
     switch (step.type) {
       case "discover":
         state.frontier.add(step.target);
+        state.nodeValues.set(step.target, step.value);
         if (step.node >= 0) parent.set(step.target, step.node);
         break;
       case "relax":
         state.frontier.add(step.target);
-        state.distances.set(step.target, step.value);
+        state.nodeValues.set(step.target, step.value);
         if (step.node >= 0) parent.set(step.target, step.node);
         break;
       case "visit":
@@ -67,15 +69,28 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
   return state;
 }
 
-export function describeStep(step: Step | undefined, labels: readonly string[]): string {
+const VALUE_NAMES: Record<AlgorithmId, string> = {
+  bfs: "nivel",
+  dfs: "profundidad",
+  dijkstra: "distancia",
+};
+
+export function describeStep(
+  step: Step | undefined,
+  labels: readonly string[],
+  algorithm: AlgorithmId,
+): string {
   if (!step) return "Listo para empezar.";
   const n = labels[step.node] ?? "?";
   const t = labels[step.target] ?? "?";
+  const value = `${VALUE_NAMES[algorithm]} ${step.value}`;
   switch (step.type) {
     case "discover":
-      return step.node < 0 ? `Empieza en ${t}.` : `${t} entra en la frontera desde ${n}.`;
+      return step.node < 0
+        ? `Empieza en ${t} (${value}).`
+        : `${t} entra en la frontera desde ${n} (${value}).`;
     case "visit":
-      return `Procesando ${n}.`;
+      return `Procesando ${n} (${value}).`;
     case "explore-edge":
       return `Mirando la arista ${n} → ${t} (peso ${step.value}).`;
     case "relax":

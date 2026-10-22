@@ -54,8 +54,8 @@ export class GraphView {
 
       this.data.labels.forEach((label, i) => {
         const node = this.cy.getElementById(`n${i}`);
-        const dist = state.distances.get(i);
-        node.data("label", dist === undefined ? label : `${label}\n${dist}`);
+        const value = state.nodeValues.get(i);
+        node.data("label", value === undefined ? label : `${label}\n${value}`);
         if (state.frontier.has(i)) node.addClass("frontier");
         if (state.visited.has(i)) node.addClass("visited");
         if (state.finished.has(i)) node.addClass("finished");
