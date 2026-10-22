@@ -1,6 +1,7 @@
 import "./style.css";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
+import { incompatibility } from "./graph/compatibility";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
 import { cellKey, deriveState, describeStep, type VisualState } from "./player/state";
@@ -12,15 +13,9 @@ const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford", "floyd-wa
 const NO_SOURCE = new Set<AlgorithmId>(["kahn", "kruskal"]);
 const BUILDS_TREE = new Set<AlgorithmId>(["prim", "kruskal"]);
 
-// Algoritmos que solo tienen sentido sobre un tipo de grafo.
-const REQUIREMENTS: Partial<Record<AlgorithmId, { directed: boolean; message: string }>> = {
-  prim: { directed: false, message: "Prim necesita un grafo no dirigido. Elegí el grafo ponderado." },
-  kruskal: { directed: false, message: "Kruskal necesita un grafo no dirigido. Elegí el grafo ponderado." },
-  kahn: { directed: true, message: "Kahn necesita un grafo dirigido. Elegí el grafo de dependencias." },
-};
-
 const ui = {
   sample: $<HTMLSelectElement>("sample"),
+  sampleHint: $<HTMLParagraphElement>("sample-hint"),
   algorithm: $<HTMLSelectElement>("algorithm"),
   source: $<HTMLSelectElement>("source"),
   sourceField: $<HTMLLabelElement>("source-field"),
@@ -44,8 +39,6 @@ const ui = {
 let sample: SampleGraph = samples.weighted;
 let view = new GraphView($("graph"), sample);
 let steps: Step[] = [];
-// Mensaje a mostrar cuando el algoritmo no aplica al grafo elegido.
-let notice: string | null = null;
 
 function chip(text: string): HTMLLIElement {
   const li = document.createElement("li");
@@ -110,8 +103,11 @@ const player = new Player((position, total, playing) => {
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;
-  ui.description.textContent =
-    notice ?? describeStep(steps[position - 1], sample.labels, ui.algorithm.value as AlgorithmId);
+  ui.description.textContent = describeStep(
+    steps[position - 1],
+    sample.labels,
+    ui.algorithm.value as AlgorithmId,
+  );
   ui.play.textContent = playing ? "⏸" : "▶";
   ui.back.disabled = position === 0;
   ui.forward.disabled = position === total;
@@ -128,41 +124,68 @@ function fillNodeSelects(): void {
 
 function selectSample(id: SampleId): void {
   sample = samples[id];
+  ui.sample.value = id;
   view.destroy();
   view = new GraphView($("graph"), sample);
   fillNodeSelects();
+}
+
+const sampleIds = Object.keys(samples) as SampleId[];
+
+// Deshabilita en el selector los grafos a los que no se puede aplicar el algoritmo.
+function updateSampleOptions(): void {
+  const algorithm = ui.algorithm.value as AlgorithmId;
+  for (const option of ui.sample.options) {
+    const s = samples[option.value as SampleId];
+    const reason = incompatibility(algorithm, s.graph);
+    option.disabled = reason !== null;
+    option.text = reason ? `${s.name} — ${reason}` : s.name;
+  }
+}
+
+// Si el grafo elegido no sirve para el algoritmo, pasa al primero que sí sirva.
+function ensureCompatibleSample(): void {
+  const algorithm = ui.algorithm.value as AlgorithmId;
+  const reason = incompatibility(algorithm, sample.graph);
+  ui.sampleHint.hidden = reason === null;
+  if (reason === null) return;
+
+  const replacement = sampleIds.find((id) => incompatibility(algorithm, samples[id].graph) === null);
+  if (!replacement) return;
+  selectSample(replacement);
+  ui.sampleHint.textContent = `Se cambió a «${samples[replacement].name}»: ${reason}.`;
 }
 
 function recompute(engine: EngineModule): void {
   const algorithm = ui.algorithm.value as AlgorithmId;
   ui.targetField.hidden = !NEEDS_TARGET.has(algorithm);
   ui.sourceField.hidden = NO_SOURCE.has(algorithm);
-  const requirement = REQUIREMENTS[algorithm];
-  if (requirement && requirement.directed !== sample.graph.directed) {
-    notice = requirement.message;
-    steps = [];
-  } else {
-    notice = null;
-    steps = runAlgorithm(
-      engine,
-      algorithm,
-      sample.graph,
-      Number(ui.source.value),
-      Number(ui.target.value),
-    );
-  }
+  steps = runAlgorithm(
+    engine,
+    algorithm,
+    sample.graph,
+    Number(ui.source.value),
+    Number(ui.target.value),
+  );
   player.load(steps);
 }
 
 fillNodeSelects();
+updateSampleOptions();
 
 async function main(): Promise<void> {
   const engine = await loadEngine();
   ui.sample.addEventListener("change", () => {
     selectSample(ui.sample.value as SampleId);
+    ui.sampleHint.hidden = true;
     recompute(engine);
   });
-  for (const select of [ui.algorithm, ui.source, ui.target]) {
+  ui.algorithm.addEventListener("change", () => {
+    updateSampleOptions();
+    ensureCompatibleSample();
+    recompute(engine);
+  });
+  for (const select of [ui.source, ui.target]) {
     select.addEventListener("change", () => recompute(engine));
   }
   ui.play.addEventListener("click", () => player.toggle());
