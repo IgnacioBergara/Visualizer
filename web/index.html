@@ -25,12 +25,13 @@
             <option value="dfs">DFS (profundidad)</option>
             <option value="dijkstra">Dijkstra (camino mínimo)</option>
             <option value="bellman-ford">Bellman-Ford (pesos negativos)</option>
+            <option value="kahn">Kahn (orden topológico)</option>
             <option value="prim">Prim (árbol de cubrimiento mínimo)</option>
           </select>
         </label>
 
         <div class="row">
-          <label class="field">
+          <label class="field" id="source-field">
             <span>Origen</span>
             <select id="source"></select>
           </label>
@@ -56,12 +57,17 @@
         <p class="counter" id="counter">0 / 0</p>
         <p class="description" id="description">Cargando motor…</p>
 
+        <section class="output" id="output-panel" hidden>
+          <span>Orden topológico</span>
+          <ol id="output"></ol>
+        </section>
+
         <ul class="legend">
           <li><i class="swatch frontier"></i>En la frontera</li>
           <li><i class="swatch visited"></i>Visitado</li>
           <li><i class="swatch finished"></i>Terminado</li>
           <li><i class="swatch path"></i>Resultado (camino o árbol)</li>
-          <li><i class="swatch cycle"></i>Ciclo negativo</li>
+          <li><i class="swatch cycle"></i>Ciclo (negativo o que impide el orden)</li>
         </ul>
       </aside>
 

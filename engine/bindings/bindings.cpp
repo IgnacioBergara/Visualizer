@@ -56,6 +56,9 @@ val runDijkstra(const val& desc, int source, int target) {
 val runBellmanFord(const val& desc, int source, int target) {
     return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::bellmanFord(g, source, target)); });
 }
+val runKahn(const val& desc) {
+    return withGraph(desc, [](const gv::Grafo& g) { return stepsToJs(gv::topologicalSortKahn(g)); });
+}
 val runPrim(const val& desc, int source) {
     return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::prim(g, source)); });
 }
@@ -67,5 +70,6 @@ EMSCRIPTEN_BINDINGS(gv_engine) {
     emscripten::function("dfs", &runDfs);
     emscripten::function("dijkstra", &runDijkstra);
     emscripten::function("bellmanFord", &runBellmanFord);
+    emscripten::function("kahn", &runKahn);
     emscripten::function("prim", &runPrim);
 }

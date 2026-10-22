@@ -15,6 +15,9 @@ enum class StepType {
     Finish,      // `node` queda completamente procesado
     PathEdge,    // la arista node -> target forma parte del camino resultado
     NegativeCycle, // la arista node -> target forma parte de un ciclo negativo
+    SetValue,    // el valor que se muestra en `node` pasa a ser `value` (p. ej. grado de entrada)
+    Output,      // `node` se agrega al resultado en la posición `value` (orden topológico)
+    Blocked,     // `node` no se pudo procesar porque depende de un ciclo
 };
 
 struct Step {
@@ -35,6 +38,9 @@ constexpr std::string_view toString(StepType type) {
         case StepType::Finish: return "finish";
         case StepType::PathEdge: return "path-edge";
         case StepType::NegativeCycle: return "negative-cycle";
+        case StepType::SetValue: return "set-value";
+        case StepType::Output: return "output";
+        case StepType::Blocked: return "blocked";
     }
     return "unknown";
 }

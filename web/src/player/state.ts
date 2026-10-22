@@ -18,8 +18,10 @@ export interface VisualState {
   pathEdges: Set<EdgeKey>;
   cycleNodes: Set<number>;
   cycleEdges: Set<EdgeKey>;
-  /** Número que se muestra bajo cada nodo: nivel (BFS), profundidad (DFS) o distancia (Dijkstra). */
+  /** Número que se muestra bajo cada nodo: nivel, profundidad, distancia, grado de entrada... */
   nodeValues: Map<number, number>;
+  /** Nodos ya agregados al resultado, en orden (orden topológico). */
+  output: number[];
 }
 
 // Recalcular desde cero en cada paso es O(pasos), de sobra para grafos
@@ -36,6 +38,7 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
     cycleNodes: new Set(),
     cycleEdges: new Set(),
     nodeValues: new Map(),
+    output: [],
   };
   const parent = new Map<number, number>();
 
@@ -74,6 +77,15 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
         state.cycleNodes.add(step.target);
         state.cycleEdges.add(edgeKey(step.node, step.target, directed));
         break;
+      case "set-value":
+        state.nodeValues.set(step.node, step.value);
+        break;
+      case "output":
+        state.output.push(step.node);
+        break;
+      case "blocked":
+        state.cycleNodes.add(step.node);
+        break;
     }
   }
 
@@ -86,6 +98,7 @@ const VALUE_NAMES: Record<AlgorithmId, string> = {
   dfs: "profundidad",
   dijkstra: "distancia",
   "bellman-ford": "distancia",
+  kahn: "grado de entrada",
   prim: "costo de conexión",
 };
 
@@ -100,11 +113,16 @@ export function describeStep(
   const value = `${VALUE_NAMES[algorithm]} ${step.value}`;
   switch (step.type) {
     case "discover":
+      if (algorithm === "kahn") {
+        return step.node < 0
+          ? `${t} no tiene dependencias: entra a la cola.`
+          : `${t} ya no tiene dependencias pendientes: entra a la cola.`;
+      }
       return step.node < 0
         ? `Empieza en ${t} (${value}).`
         : `${t} entra en la frontera desde ${n} (${value}).`;
     case "visit":
-      return `Procesando ${n} (${value}).`;
+      return algorithm === "kahn" ? `${n} sale de la cola.` : `Procesando ${n} (${value}).`;
     case "explore-edge":
       return `Mirando la arista ${n} → ${t} (peso ${step.value}).`;
     case "relax":
@@ -120,5 +138,11 @@ export function describeStep(
         : `Camino mínimo: ${n} → ${t} (acumulado ${step.value}).`;
     case "negative-cycle":
       return `Ciclo negativo: ${n} → ${t}. Las distancias que pasan por él no están definidas.`;
+    case "set-value":
+      return `${n}: ${value}.`;
+    case "output":
+      return `${n} va al orden en la posición ${step.value + 1}.`;
+    case "blocked":
+      return `${n} nunca llega a grado 0 (le quedan ${step.value}): hay un ciclo y no existe orden topológico.`;
   }
 }

@@ -18,6 +18,11 @@ Steps dijkstra(const Grafo& graph, int source, int target = -1);
 // aristas como NegativeCycle y termina; si no, se comporta como dijkstra().
 Steps bellmanFord(const Grafo& g, int start, int target = -1);
 
+// Orden topológico (grafo dirigido). Cada nodo ordenado se emite como Output
+// con su posición; si hay un ciclo, los nodos que no se pudieron ordenar se
+// emiten como Blocked.
+Steps topologicalSortKahn(const Grafo& graph);
+
 // Árbol de cubrimiento mínimo (grafo no dirigido). Cada arista que entra al
 // árbol se emite como PathEdge con su peso.
 Steps prim(const Grafo& graph, int source);

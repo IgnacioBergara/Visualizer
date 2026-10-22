@@ -9,11 +9,19 @@ import { GraphView } from "./render/GraphView";
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford"]);
+const NO_SOURCE = new Set<AlgorithmId>(["kahn"]);
+
+// Algoritmos que solo tienen sentido sobre un tipo de grafo.
+const REQUIREMENTS: Partial<Record<AlgorithmId, { directed: boolean; message: string }>> = {
+  prim: { directed: false, message: "Prim necesita un grafo no dirigido. Elegí el grafo ponderado." },
+  kahn: { directed: true, message: "Kahn necesita un grafo dirigido. Elegí el grafo de dependencias." },
+};
 
 const ui = {
   sample: $<HTMLSelectElement>("sample"),
   algorithm: $<HTMLSelectElement>("algorithm"),
   source: $<HTMLSelectElement>("source"),
+  sourceField: $<HTMLLabelElement>("source-field"),
   target: $<HTMLSelectElement>("target"),
   targetField: $<HTMLLabelElement>("target-field"),
   reset: $<HTMLButtonElement>("reset"),
@@ -24,6 +32,8 @@ const ui = {
   timeline: $<HTMLInputElement>("timeline"),
   counter: $<HTMLParagraphElement>("counter"),
   description: $<HTMLParagraphElement>("description"),
+  outputPanel: $<HTMLElement>("output-panel"),
+  output: $<HTMLOListElement>("output"),
 };
 
 let sample: SampleGraph = samples.weighted;
@@ -33,7 +43,16 @@ let steps: Step[] = [];
 let notice: string | null = null;
 
 const player = new Player((position, total, playing) => {
-  view.render(deriveState(steps, position, sample.graph.directed));
+  const state = deriveState(steps, position, sample.graph.directed);
+  view.render(state);
+  ui.outputPanel.hidden = ui.algorithm.value !== "kahn" || steps.length === 0;
+  ui.output.replaceChildren(
+    ...state.output.map((node) => {
+      const li = document.createElement("li");
+      li.textContent = sample.labels[node];
+      return li;
+    }),
+  );
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;
@@ -63,8 +82,10 @@ function selectSample(id: SampleId): void {
 function recompute(engine: EngineModule): void {
   const algorithm = ui.algorithm.value as AlgorithmId;
   ui.targetField.hidden = !NEEDS_TARGET.has(algorithm);
-  if (algorithm === "prim" && sample.graph.directed) {
-    notice = "Prim necesita un grafo no dirigido. Elegí el grafo ponderado.";
+  ui.sourceField.hidden = NO_SOURCE.has(algorithm);
+  const requirement = REQUIREMENTS[algorithm];
+  if (requirement && requirement.directed !== sample.graph.directed) {
+    notice = requirement.message;
     steps = [];
   } else {
     notice = null;

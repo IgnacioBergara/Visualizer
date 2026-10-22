@@ -43,6 +43,37 @@ export const samples = {
     ],
   },
 
+  // Grafo dirigido sin ciclos (p. ej. materias y sus previas) para el orden topológico.
+  dag: {
+    name: "Dependencias (dirigido, sin ciclos)",
+    graph: {
+      nodeCount: 8,
+      directed: true,
+      edges: [
+        edge(0, 2, 1),
+        edge(1, 2, 1),
+        edge(2, 4, 1),
+        edge(3, 4, 1),
+        edge(3, 5, 1),
+        edge(4, 6, 1),
+        edge(5, 6, 1),
+        edge(6, 7, 1),
+        edge(5, 7, 1),
+      ],
+    },
+    labels: ["A", "B", "C", "D", "E", "F", "G", "H"],
+    positions: [
+      { x: 0, y: 40 },
+      { x: 0, y: 260 },
+      { x: 180, y: 40 },
+      { x: 180, y: 260 },
+      { x: 360, y: 40 },
+      { x: 360, y: 260 },
+      { x: 540, y: 120 },
+      { x: 720, y: 220 },
+    ],
+  },
+
   // Dijkstra cierra B con 4 antes de ver C -> B (-3) y se equivoca en D, E y F.
   negative: {
     name: "Pesos negativos (dirigido)",

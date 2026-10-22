@@ -97,6 +97,10 @@ h1 {
   gap: 10px;
 }
 
+.row:not(:has(> .field:not([hidden]))) {
+  display: none;
+}
+
 select,
 button {
   font: inherit;
@@ -149,6 +153,37 @@ input[type="range"] {
   border-radius: 6px;
   background: var(--bg);
   font-size: 0.9rem;
+}
+
+.output {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.output[hidden] {
+  display: none;
+}
+
+.output ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.output li {
+  min-width: 28px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--finished);
+  color: var(--text);
+  font-weight: 600;
+  text-align: center;
 }
 
 .legend {
