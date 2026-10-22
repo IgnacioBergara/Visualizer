@@ -1,0 +1,10 @@
+node_modules/
+web/dist/
+engine/build*/
+
+# Generados por `npm run build:wasm` (engine.d.ts sí se versiona)
+web/src/wasm/engine.js
+web/src/wasm/engine.wasm
+
+.vscode/
+.idea/

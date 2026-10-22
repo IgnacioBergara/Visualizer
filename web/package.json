@@ -1,0 +1,22 @@
+{
+  "name": "graph-visualizer-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "build:wasm": "emcmake cmake -S ../engine -B ../engine/build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build ../engine/build",
+    "test:engine": "ctest --test-dir ../engine/build --output-on-failure"
+  },
+  "dependencies": {
+    "cytoscape": "^3.30.2"
+  },
+  "devDependencies": {
+    "@types/cytoscape": "^3.21.9",
+    "typescript": "^5.6.3",
+    "vite": "^6.4.5"
+  }
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visualizador de Grafos</title>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <header>
+          <h1>Visualizador de Grafos</h1>
+          <p class="subtitle">Motor en C++ → WebAssembly</p>
+        </header>
+
+        <label class="field">
+          <span>Algoritmo</span>
+          <select id="algorithm">
+            <option value="bfs">BFS (anchura)</option>
+            <option value="dfs">DFS (profundidad)</option>
+            <option value="dijkstra">Dijkstra (camino mínimo)</option>
+          </select>
+        </label>
+
+        <div class="row">
+          <label class="field">
+            <span>Origen</span>
+            <select id="source"></select>
+          </label>
+          <label class="field" id="target-field">
+            <span>Destino</span>
+            <select id="target"></select>
+          </label>
+        </div>
+
+        <div class="controls">
+          <button id="reset" title="Al inicio">⏮</button>
+          <button id="back" title="Paso atrás">◀</button>
+          <button id="play" class="primary" title="Reproducir / pausar">▶</button>
+          <button id="forward" title="Paso adelante">▶|</button>
+        </div>
+
+        <label class="field">
+          <span>Velocidad</span>
+          <input id="speed" type="range" min="100" max="1500" step="100" value="600" />
+        </label>
+
+        <input id="timeline" type="range" min="0" max="0" value="0" aria-label="Línea de tiempo" />
+        <p class="counter" id="counter">0 / 0</p>
+        <p class="description" id="description">Cargando motor…</p>
+
+        <ul class="legend">
+          <li><i class="swatch frontier"></i>En la frontera</li>
+          <li><i class="swatch visited"></i>Visitado</li>
+          <li><i class="swatch finished"></i>Terminado</li>
+          <li><i class="swatch path"></i>Camino mínimo</li>
+        </ul>
+      </aside>
+
+      <main id="graph" class="graph"></main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
