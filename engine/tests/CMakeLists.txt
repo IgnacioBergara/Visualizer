@@ -13,6 +13,7 @@ add_executable(engine_tests
     bfs_test.cpp
     dfs_test.cpp
     dijkstra_test.cpp
+    prim_test.cpp
 )
 target_link_libraries(engine_tests PRIVATE gv_core Catch2::Catch2WithMain)
 

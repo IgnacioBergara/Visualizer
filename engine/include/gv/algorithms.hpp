@@ -10,8 +10,12 @@ namespace gv {
 Steps bfs(const Grafo& graph, int from);
 Steps dfs(const Grafo& graph, int from);
 
-// Si `target` es -1 calcula todas las distancias; si no, al final emite el
-// camino mínimo hasta `target` como pasos PathEdge.
+// Calcula todas las distancias desde `source`. Si `target` no es -1, al final
+// emite el camino mínimo hasta `target` como pasos PathEdge.
 Steps dijkstra(const Grafo& graph, int source, int target = -1);
+
+// Árbol de cubrimiento mínimo (grafo no dirigido). Cada arista que entra al
+// árbol se emite como PathEdge con su peso.
+Steps prim(const Grafo& graph, int source);
 
 } // namespace gv

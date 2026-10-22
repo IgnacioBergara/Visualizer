@@ -21,5 +21,7 @@ export function runAlgorithm(
       return engine.dfs(graph, source);
     case "dijkstra":
       return engine.dijkstra(graph, source, target);
+    case "prim":
+      return engine.prim(graph, source);
   }
 }

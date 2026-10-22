@@ -33,28 +33,29 @@ TEST_CASE("Dijkstra visita los nodos en orden de distancia") {
     CHECK(visitOrder(gv::dijkstra(g, 0)) == std::vector<int>{0, 1, 2});
 }
 
-TEST_CASE("Dijkstra se detiene al llegar al destino") {
+TEST_CASE("Dijkstra procesa todos los alcanzables, también el último") {
     gv::Grafo g(4);
     g.agregarAristaNoDirigida(0, 1, 1.0);
     g.agregarAristaNoDirigida(1, 2, 1.0);
     g.agregarAristaNoDirigida(2, 3, 1.0);
 
-    CHECK(visitOrder(gv::dijkstra(g, 0, 1)) == std::vector<int>{0, 1});
+    CHECK(visitOrder(gv::dijkstra(g, 0, 1)) == std::vector<int>{0, 1, 2, 3});
+}
+
+TEST_CASE("Dijkstra desempata quedándose con el índice más alto") {
+    // 1 y 2 están a la misma distancia; con `<=` gana el último encontrado.
+    gv::Grafo g(3);
+    g.agregarAristaNoDirigida(0, 1, 1.0);
+    g.agregarAristaNoDirigida(0, 2, 1.0);
+
+    CHECK(visitOrder(gv::dijkstra(g, 0)) == std::vector<int>{0, 2, 1});
 }
 
 TEST_CASE("Dijkstra no emite camino si el destino es inalcanzable") {
     gv::Grafo g(3);
     g.agregarAristaNoDirigida(0, 1, 1.0);
 
-    CHECK(stepsOfType(gv::dijkstra(g, 0, 2), gv::StepType::PathEdge).empty());
-}
-
-TEST_CASE("Dijkstra no desborda el MinHeap en un grafo completo") {
-    // Grafo completo dirigido con pesos decrecientes: fuerza muchas relajaciones.
-    gv::Grafo g(6);
-    for (int u = 0; u < 6; ++u)
-        for (int v = 0; v < 6; ++v)
-            if (u != v) g.agregarArista(u, v, 10.0 - u - v);
-
-    CHECK(visitOrder(gv::dijkstra(g, 0)).size() == 6);
+    auto steps = gv::dijkstra(g, 0, 2);
+    CHECK(stepsOfType(steps, gv::StepType::PathEdge).empty());
+    CHECK(visitOrder(steps) == std::vector<int>{0, 1});
 }

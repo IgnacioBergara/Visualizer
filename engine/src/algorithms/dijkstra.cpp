@@ -3,53 +3,60 @@
 #include <limits>
 #include <vector>
 
-#include "gv/tads/min_heap.hpp"
-
 namespace gv {
 
+// Versión O(V²): en cada vuelta se busca linealmente el nodo no visitado con
+// menor distancia, sin cola de prioridad.
 Steps dijkstra(const Grafo& graph, int source, int target) {
-    constexpr double inf = std::numeric_limits<double>::infinity();
-    const int n = graph.cantNodos();
+    constexpr double INF = std::numeric_limits<double>::infinity();
+    const int V = graph.cantNodos();
 
     Steps steps;
-    std::vector<double> dist(n, inf);
-    std::vector<int> prev(n, -1);
-    std::vector<bool> done(n, false);
-    // Sin decrease-key: cada relajación inserta una entrada nueva, así que
-    // como mucho hay una por arista más la del origen.
-    MinHeap frontier(graph.cantAristas() + 1);
+    std::vector<double> dist(V, INF);
+    std::vector<int> parent(V, -1);
+    std::vector<bool> visited(V, false);
 
-    dist[source] = 0.0;
-    frontier.insertar(source, 0.0);
+    dist[source] = 0;
     steps.push_back({StepType::Relax, -1, source, 0.0});
 
-    while (!frontier.vacio()) {
-        int u;
-        double d;
-        frontier.extraerMin(u, d);
-        if (done[u]) continue; // entrada obsoleta del heap
-        done[u] = true;
-        steps.push_back({StepType::Visit, u, -1, d});
-        if (u == target) break;
-
-        for (const NodoAdy* a = graph.adyacentes(u); a; a = a->sig) {
-            int v = a->destino;
-            if (done[v]) continue;
-            steps.push_back({StepType::ExploreEdge, u, v, a->peso});
-            double candidate = d + a->peso;
-            if (candidate < dist[v]) {
-                dist[v] = candidate;
-                prev[v] = u;
-                frontier.insertar(v, candidate);
-                steps.push_back({StepType::Relax, u, v, candidate});
+    // V vueltas (y no V-1) para que el último nodo también quede procesado
+    // en la animación; no cambia ninguna distancia.
+    for (int count = 0; count < V; count++) {
+        // Encuentra el vértice con la distancia mínima de los aún no procesados.
+        double minDistance = INF;
+        int minIndex = -1;
+        for (int v = 0; v < V; v++) {
+            if (!visited[v] && dist[v] <= minDistance) {
+                minDistance = dist[v];
+                minIndex = v;
             }
         }
-        steps.push_back({StepType::Finish, u, -1, d});
+
+        if (minIndex == -1 || minDistance == INF) {
+            break; // No hay más vértices alcanzables por procesar.
+        }
+
+        visited[minIndex] = true;
+        steps.push_back({StepType::Visit, minIndex, -1, minDistance});
+
+        // Actualiza la distancia de los adyacentes del vértice elegido.
+        for (const NodoAdy* edge = graph.adyacentes(minIndex); edge; edge = edge->sig) {
+            int v = edge->destino;
+            if (visited[v]) continue;
+            steps.push_back({StepType::ExploreEdge, minIndex, v, edge->peso});
+            if (dist[v] > dist[minIndex] + edge->peso) {
+                dist[v] = dist[minIndex] + edge->peso;
+                parent[v] = minIndex;
+                steps.push_back({StepType::Relax, minIndex, v, dist[v]});
+            }
+        }
+        steps.push_back({StepType::Finish, minIndex, -1, minDistance});
     }
 
-    if (target >= 0 && prev[target] != -1) {
+    // Reconstruye el camino hasta `target` siguiendo parent desde el final.
+    if (target >= 0 && parent[target] != -1) {
         std::vector<int> path;
-        for (int v = target; v != -1; v = prev[v]) path.push_back(v);
+        for (int v = target; v != -1; v = parent[v]) path.push_back(v);
         for (auto i = path.size() - 1; i > 0; --i) {
             steps.push_back({StepType::PathEdge, path[i], path[i - 1], dist[path[i - 1]]});
         }

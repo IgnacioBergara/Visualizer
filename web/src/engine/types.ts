@@ -30,4 +30,4 @@ export interface GraphDescription {
   edges: GraphEdge[];
 }
 
-export type AlgorithmId = "bfs" | "dfs" | "dijkstra";
+export type AlgorithmId = "bfs" | "dfs" | "dijkstra" | "prim";

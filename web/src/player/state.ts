@@ -73,6 +73,7 @@ const VALUE_NAMES: Record<AlgorithmId, string> = {
   bfs: "nivel",
   dfs: "profundidad",
   dijkstra: "distancia",
+  prim: "costo de conexión",
 };
 
 export function describeStep(
@@ -94,12 +95,15 @@ export function describeStep(
     case "explore-edge":
       return `Mirando la arista ${n} → ${t} (peso ${step.value}).`;
     case "relax":
-      return step.node < 0
-        ? `dist(${t}) = 0.`
+      if (step.node < 0) return algorithm === "prim" ? `El árbol empieza en ${t}.` : `dist(${t}) = 0.`;
+      return algorithm === "prim"
+        ? `${t} se puede conectar al árbol desde ${n} con peso ${step.value}.`
         : `dist(${t}) mejora a ${step.value} pasando por ${n}.`;
     case "finish":
       return `${n} terminado.`;
     case "path-edge":
-      return `Camino mínimo: ${n} → ${t} (acumulado ${step.value}).`;
+      return algorithm === "prim"
+        ? `La arista ${n} – ${t} entra al árbol (peso ${step.value}).`
+        : `Camino mínimo: ${n} → ${t} (acumulado ${step.value}).`;
   }
 }
