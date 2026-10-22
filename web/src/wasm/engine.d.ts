@@ -9,6 +9,7 @@ export interface EngineModule {
   bellmanFord(graph: GraphDescription, source: number, target: number): Step[];
   kahn(graph: GraphDescription): Step[];
   prim(graph: GraphDescription, source: number): Step[];
+  kruskal(graph: GraphDescription): Step[];
 }
 
 declare function createEngine(): Promise<EngineModule>;

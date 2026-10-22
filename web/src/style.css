@@ -209,6 +209,7 @@ input[type="range"] {
 .swatch.finished { background: var(--finished); }
 .swatch.path { background: var(--path); border-radius: 2px; }
 .swatch.cycle { background: var(--cycle); border-radius: 2px; }
+.swatch.rejected { border: 2px dotted var(--edge); border-radius: 2px; }
 
 .graph {
   min-width: 0;

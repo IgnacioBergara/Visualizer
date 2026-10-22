@@ -2,7 +2,7 @@ import cytoscape from "cytoscape";
 import type { SampleGraph } from "../graph/samples";
 import { edgeKey, type VisualState } from "../player/state";
 
-const STATE_CLASSES = "frontier visited finished current active tree path cycle";
+const STATE_CLASSES = "frontier visited finished current active tree path cycle rejected";
 
 // Cytoscape no lee variables CSS, así que tomamos los colores del tema al crear la vista.
 function themeColor(name: string): string {
@@ -55,14 +55,15 @@ export class GraphView {
     this.cy.destroy();
   }
 
-  render(state: VisualState): void {
+  /** `formatValue` decide cómo se escribe el número bajo cada nodo. */
+  render(state: VisualState, formatValue: (value: number) => string = String): void {
     this.cy.batch(() => {
       this.cy.elements().removeClass(STATE_CLASSES);
 
       this.data.labels.forEach((label, i) => {
         const node = this.cy.getElementById(`n${i}`);
         const value = state.nodeValues.get(i);
-        node.data("label", value === undefined ? label : `${label}\n${value}`);
+        node.data("label", value === undefined ? label : `${label}\n${formatValue(value)}`);
         if (state.frontier.has(i)) node.addClass("frontier");
         if (state.visited.has(i)) node.addClass("visited");
         if (state.finished.has(i)) node.addClass("finished");
@@ -73,6 +74,7 @@ export class GraphView {
       for (const key of state.treeEdges) this.cy.getElementById(key).addClass("tree");
       for (const key of state.pathEdges) this.cy.getElementById(key).addClass("path");
       for (const key of state.cycleEdges) this.cy.getElementById(key).addClass("cycle");
+      for (const key of state.rejectedEdges) this.cy.getElementById(key).addClass("rejected");
       if (state.activeEdge) this.cy.getElementById(state.activeEdge).addClass("active");
     });
   }
@@ -137,6 +139,7 @@ export class GraphView {
       { selector: "edge.tree", style: { "line-color": c.visited, "target-arrow-color": c.visited, width: 4 } },
       { selector: "edge.active", style: { "line-color": c.active, "target-arrow-color": c.active, width: 5 } },
       { selector: "edge.path", style: { "line-color": c.path, "target-arrow-color": c.path, width: 6 } },
+      { selector: "edge.rejected", style: { "line-style": "dotted", opacity: 0.35 } },
       { selector: "node.cycle", style: { "border-color": c.cycle, "border-width": 5 } },
       {
         selector: "edge.cycle",

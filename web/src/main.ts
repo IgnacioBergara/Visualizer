@@ -3,17 +3,19 @@ import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
-import { deriveState, describeStep } from "./player/state";
+import { deriveState, describeStep, type VisualState } from "./player/state";
 import { GraphView } from "./render/GraphView";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford"]);
-const NO_SOURCE = new Set<AlgorithmId>(["kahn"]);
+const NO_SOURCE = new Set<AlgorithmId>(["kahn", "kruskal"]);
+const BUILDS_TREE = new Set<AlgorithmId>(["prim", "kruskal"]);
 
 // Algoritmos que solo tienen sentido sobre un tipo de grafo.
 const REQUIREMENTS: Partial<Record<AlgorithmId, { directed: boolean; message: string }>> = {
   prim: { directed: false, message: "Prim necesita un grafo no dirigido. Elegí el grafo ponderado." },
+  kruskal: { directed: false, message: "Kruskal necesita un grafo no dirigido. Elegí el grafo ponderado." },
   kahn: { directed: true, message: "Kahn necesita un grafo dirigido. Elegí el grafo de dependencias." },
 };
 
@@ -33,6 +35,7 @@ const ui = {
   counter: $<HTMLParagraphElement>("counter"),
   description: $<HTMLParagraphElement>("description"),
   outputPanel: $<HTMLElement>("output-panel"),
+  outputTitle: $<HTMLSpanElement>("output-title"),
   output: $<HTMLOListElement>("output"),
 };
 
@@ -42,17 +45,34 @@ let steps: Step[] = [];
 // Mensaje a mostrar cuando el algoritmo no aplica al grafo elegido.
 let notice: string | null = null;
 
+function chip(text: string): HTMLLIElement {
+  const li = document.createElement("li");
+  li.textContent = text;
+  return li;
+}
+
+// Panel con el resultado parcial: el orden topológico o el peso del árbol.
+function renderOutput(state: VisualState, position: number): void {
+  const algorithm = ui.algorithm.value as AlgorithmId;
+  ui.outputPanel.hidden = steps.length === 0 || (algorithm !== "kahn" && !BUILDS_TREE.has(algorithm));
+  if (algorithm === "kahn") {
+    ui.outputTitle.textContent = "Orden topológico";
+    ui.output.replaceChildren(...state.output.map((node) => chip(sample.labels[node])));
+  } else if (BUILDS_TREE.has(algorithm)) {
+    const weight = steps
+      .slice(0, position)
+      .filter((s) => s.type === "path-edge")
+      .reduce((total, s) => total + s.value, 0);
+    ui.outputTitle.textContent = `Peso del árbol (${state.pathEdges.size} aristas)`;
+    ui.output.replaceChildren(chip(String(weight)));
+  }
+}
+
 const player = new Player((position, total, playing) => {
   const state = deriveState(steps, position, sample.graph.directed);
-  view.render(state);
-  ui.outputPanel.hidden = ui.algorithm.value !== "kahn" || steps.length === 0;
-  ui.output.replaceChildren(
-    ...state.output.map((node) => {
-      const li = document.createElement("li");
-      li.textContent = sample.labels[node];
-      return li;
-    }),
-  );
+  // En Kruskal el valor de cada nodo es su representante: se muestra su etiqueta.
+  view.render(state, ui.algorithm.value === "kruskal" ? (v) => sample.labels[v] : String);
+  renderOutput(state, position);
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;

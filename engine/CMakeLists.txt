@@ -22,6 +22,7 @@ add_library(gv_core
     src/algorithms/dfs.cpp
     src/algorithms/dijkstra.cpp
     src/algorithms/kahn.cpp
+    src/algorithms/kruskal.cpp
     src/algorithms/prim.cpp
 )
 target_include_directories(gv_core PUBLIC include)

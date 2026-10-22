@@ -27,4 +27,9 @@ Steps topologicalSortKahn(const Grafo& graph);
 // árbol se emite como PathEdge con su peso.
 Steps prim(const Grafo& graph, int source);
 
+// Árbol (o bosque, si no es conexo) de cubrimiento mínimo. Las aristas que
+// entran se emiten como PathEdge y las descartadas como RejectEdge; SetValue
+// informa el representante del conjunto (MFSet) de cada nodo.
+Steps kruskal(const Grafo& graph);
+
 } // namespace gv

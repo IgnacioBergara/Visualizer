@@ -18,6 +18,7 @@ enum class StepType {
     SetValue,    // el valor que se muestra en `node` pasa a ser `value` (p. ej. grado de entrada)
     Output,      // `node` se agrega al resultado en la posición `value` (orden topológico)
     Blocked,     // `node` no se pudo procesar porque depende de un ciclo
+    RejectEdge,  // la arista node -> target se descarta porque formaría un ciclo
 };
 
 struct Step {
@@ -41,6 +42,7 @@ constexpr std::string_view toString(StepType type) {
         case StepType::SetValue: return "set-value";
         case StepType::Output: return "output";
         case StepType::Blocked: return "blocked";
+        case StepType::RejectEdge: return "reject-edge";
     }
     return "unknown";
 }

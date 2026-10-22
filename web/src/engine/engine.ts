@@ -27,5 +27,7 @@ export function runAlgorithm(
       return engine.kahn(graph);
     case "prim":
       return engine.prim(graph, source);
+    case "kruskal":
+      return engine.kruskal(graph);
   }
 }

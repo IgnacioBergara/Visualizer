@@ -27,6 +27,7 @@
             <option value="bellman-ford">Bellman-Ford (pesos negativos)</option>
             <option value="kahn">Kahn (orden topológico)</option>
             <option value="prim">Prim (árbol de cubrimiento mínimo)</option>
+            <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
           </select>
         </label>
 
@@ -58,7 +59,7 @@
         <p class="description" id="description">Cargando motor…</p>
 
         <section class="output" id="output-panel" hidden>
-          <span>Orden topológico</span>
+          <span id="output-title"></span>
           <ol id="output"></ol>
         </section>
 
@@ -68,6 +69,7 @@
           <li><i class="swatch finished"></i>Terminado</li>
           <li><i class="swatch path"></i>Resultado (camino o árbol)</li>
           <li><i class="swatch cycle"></i>Ciclo (negativo o que impide el orden)</li>
+          <li><i class="swatch rejected"></i>Arista descartada</li>
         </ul>
       </aside>
 

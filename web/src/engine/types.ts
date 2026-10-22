@@ -10,7 +10,8 @@ export type StepType =
   | "negative-cycle"
   | "set-value"
   | "output"
-  | "blocked";
+  | "blocked"
+  | "reject-edge";
 
 export interface Step {
   type: StepType;
@@ -34,4 +35,11 @@ export interface GraphDescription {
   edges: GraphEdge[];
 }
 
-export type AlgorithmId = "bfs" | "dfs" | "dijkstra" | "bellman-ford" | "kahn" | "prim";
+export type AlgorithmId =
+  | "bfs"
+  | "dfs"
+  | "dijkstra"
+  | "bellman-ford"
+  | "kahn"
+  | "prim"
+  | "kruskal";
