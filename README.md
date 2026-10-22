@@ -78,4 +78,4 @@ Controles: `←` / `→` avanzan o retroceden un paso y `Espacio` reproduce o pa
 
 ## Deploy
 
-El workflow `ci.yml` compila, ejecuta los tests y publica `web/dist` en GitHub Pages en cada push a `main`. Para activarlo hay que ir a **Settings → Pages → Source: GitHub Actions** en el repositorio.
+El workflow `ci.yml` compila y ejecuta los tests en cada push a `main` y en cada PR. La publicación en GitHub Pages es manual: **Actions → CI → Run workflow** sobre `main`. Antes hay que activar **Settings → Pages → Source: GitHub Actions** en el repositorio.

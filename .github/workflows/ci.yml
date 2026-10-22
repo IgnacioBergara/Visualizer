@@ -1,9 +1,12 @@
 name: CI
 
+# Push y PR solo compilan y testean. La demo se publica a mano desde
+# Actions -> CI -> Run workflow (sobre main).
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -43,12 +46,12 @@ jobs:
           BASE_PATH: /${{ github.event.repository.name }}/
 
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name == 'push'
+        if: github.event_name == 'workflow_dispatch'
         with:
           path: web/dist
 
   deploy:
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment:
