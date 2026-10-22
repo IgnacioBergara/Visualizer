@@ -18,6 +18,11 @@ Steps dijkstra(const Grafo& graph, int source, int target = -1);
 // aristas como NegativeCycle y termina; si no, se comporta como dijkstra().
 Steps bellmanFord(const Grafo& g, int start, int target = -1);
 
+// Distancias entre todos los pares. Emite cada celda de la matriz que cambia
+// (MatrixUpdate, con el pivote en `aux`), un Visit/Finish por pivote, los
+// nodos en ciclos negativos y, si no hay, el camino source -> target.
+Steps floydWarshall(const Grafo& g, int source = -1, int target = -1);
+
 // Orden topológico (grafo dirigido). Cada nodo ordenado se emite como Output
 // con su posición; si hay un ciclo, los nodos que no se pudieron ordenar se
 // emiten como Blocked.

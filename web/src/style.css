@@ -186,6 +186,52 @@ input[type="range"] {
   text-align: center;
 }
 
+.matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.matrix[hidden] {
+  display: none;
+}
+
+.matrix table {
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.matrix th,
+.matrix td {
+  min-width: 26px;
+  padding: 3px 2px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.matrix th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.matrix .pivot {
+  background: color-mix(in srgb, var(--visited) 25%, transparent);
+}
+
+.matrix .updated {
+  background: var(--frontier);
+  font-weight: 700;
+}
+
+.matrix .negative {
+  color: var(--cycle);
+  font-weight: 700;
+}
+
 .legend {
   list-style: none;
   margin: 0;

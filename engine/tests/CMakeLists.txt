@@ -14,6 +14,7 @@ add_executable(engine_tests
     bfs_test.cpp
     dfs_test.cpp
     dijkstra_test.cpp
+    floyd_warshall_test.cpp
     kahn_test.cpp
     kruskal_test.cpp
     prim_test.cpp

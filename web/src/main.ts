@@ -3,12 +3,12 @@ import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
-import { deriveState, describeStep, type VisualState } from "./player/state";
+import { cellKey, deriveState, describeStep, type VisualState } from "./player/state";
 import { GraphView } from "./render/GraphView";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
-const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford"]);
+const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford", "floyd-warshall"]);
 const NO_SOURCE = new Set<AlgorithmId>(["kahn", "kruskal"]);
 const BUILDS_TREE = new Set<AlgorithmId>(["prim", "kruskal"]);
 
@@ -37,6 +37,8 @@ const ui = {
   outputPanel: $<HTMLElement>("output-panel"),
   outputTitle: $<HTMLSpanElement>("output-title"),
   output: $<HTMLOListElement>("output"),
+  matrixPanel: $<HTMLElement>("matrix-panel"),
+  matrix: $<HTMLTableElement>("matrix"),
 };
 
 let sample: SampleGraph = samples.weighted;
@@ -68,11 +70,43 @@ function renderOutput(state: VisualState, position: number): void {
   }
 }
 
+// Matriz de Floyd-Warshall: resalta la fila/columna del pivote y la celda que mejoró.
+function renderMatrix(state: VisualState): void {
+  ui.matrixPanel.hidden = ui.algorithm.value !== "floyd-warshall" || steps.length === 0;
+  if (ui.matrixPanel.hidden) return;
+
+  const cell = (tag: "th" | "td", text: string, className = "") => {
+    const el = document.createElement(tag);
+    el.textContent = text;
+    if (className) el.className = className;
+    return el;
+  };
+  const { labels } = sample;
+  const header = document.createElement("tr");
+  header.append(cell("th", ""), ...labels.map((l) => cell("th", l)));
+
+  const rows = labels.map((rowLabel, i) => {
+    const tr = document.createElement("tr");
+    tr.append(cell("th", rowLabel));
+    labels.forEach((_, j) => {
+      const value = state.matrix.get(cellKey(i, j));
+      const classes = [];
+      if (state.pivot !== null && (i === state.pivot || j === state.pivot)) classes.push("pivot");
+      if (state.updatedCell?.i === i && state.updatedCell.j === j) classes.push("updated");
+      if (i === j && value !== undefined && value < 0) classes.push("negative");
+      tr.append(cell("td", value === undefined ? "∞" : String(value), classes.join(" ")));
+    });
+    return tr;
+  });
+  ui.matrix.replaceChildren(header, ...rows);
+}
+
 const player = new Player((position, total, playing) => {
   const state = deriveState(steps, position, sample.graph.directed);
   // En Kruskal el valor de cada nodo es su representante: se muestra su etiqueta.
   view.render(state, ui.algorithm.value === "kruskal" ? (v) => sample.labels[v] : String);
   renderOutput(state, position);
+  renderMatrix(state);
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;

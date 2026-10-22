@@ -19,6 +19,7 @@ enum class StepType {
     Output,      // `node` se agrega al resultado en la posición `value` (orden topológico)
     Blocked,     // `node` no se pudo procesar porque depende de un ciclo
     RejectEdge,  // la arista node -> target se descarta porque formaría un ciclo
+    MatrixUpdate, // dist[node][target] pasa a `value` yendo por `aux` (-1: arista directa)
 };
 
 struct Step {
@@ -26,6 +27,7 @@ struct Step {
     int node = -1;
     int target = -1;
     double value = 0.0;
+    int aux = -1; // dato extra según el tipo; -1 si no aplica
 };
 
 using Steps = std::vector<Step>;
@@ -43,6 +45,7 @@ constexpr std::string_view toString(StepType type) {
         case StepType::Output: return "output";
         case StepType::Blocked: return "blocked";
         case StepType::RejectEdge: return "reject-edge";
+        case StepType::MatrixUpdate: return "matrix-update";
     }
     return "unknown";
 }

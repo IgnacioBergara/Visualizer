@@ -39,6 +39,7 @@ val stepsToJs(const gv::Steps& steps) {
         obj.set("node", s.node);
         obj.set("target", s.target);
         obj.set("value", s.value);
+        obj.set("aux", s.aux);
         out.call<void>("push", obj);
     }
     return out;
@@ -55,6 +56,9 @@ val runDijkstra(const val& desc, int source, int target) {
 }
 val runBellmanFord(const val& desc, int source, int target) {
     return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::bellmanFord(g, source, target)); });
+}
+val runFloydWarshall(const val& desc, int source, int target) {
+    return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::floydWarshall(g, source, target)); });
 }
 val runKahn(const val& desc) {
     return withGraph(desc, [](const gv::Grafo& g) { return stepsToJs(gv::topologicalSortKahn(g)); });
@@ -73,6 +77,7 @@ EMSCRIPTEN_BINDINGS(gv_engine) {
     emscripten::function("dfs", &runDfs);
     emscripten::function("dijkstra", &runDijkstra);
     emscripten::function("bellmanFord", &runBellmanFord);
+    emscripten::function("floydWarshall", &runFloydWarshall);
     emscripten::function("kahn", &runKahn);
     emscripten::function("prim", &runPrim);
     emscripten::function("kruskal", &runKruskal);

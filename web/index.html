@@ -25,6 +25,7 @@
             <option value="dfs">DFS (profundidad)</option>
             <option value="dijkstra">Dijkstra (camino mínimo)</option>
             <option value="bellman-ford">Bellman-Ford (pesos negativos)</option>
+            <option value="floyd-warshall">Floyd-Warshall (todos los pares)</option>
             <option value="kahn">Kahn (orden topológico)</option>
             <option value="prim">Prim (árbol de cubrimiento mínimo)</option>
             <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
@@ -61,6 +62,11 @@
         <section class="output" id="output-panel" hidden>
           <span id="output-title"></span>
           <ol id="output"></ol>
+        </section>
+
+        <section class="matrix" id="matrix-panel" hidden>
+          <span>Matriz de distancias (fila → columna)</span>
+          <table id="matrix"></table>
         </section>
 
         <ul class="legend">

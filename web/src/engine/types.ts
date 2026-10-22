@@ -11,7 +11,8 @@ export type StepType =
   | "set-value"
   | "output"
   | "blocked"
-  | "reject-edge";
+  | "reject-edge"
+  | "matrix-update";
 
 export interface Step {
   type: StepType;
@@ -21,6 +22,8 @@ export interface Step {
   target: number;
   /** Peso o distancia, según el tipo de paso. */
   value: number;
+  /** Dato extra según el tipo (pivote en matrix-update). -1 si no aplica. */
+  aux: number;
 }
 
 export interface GraphEdge {
@@ -40,6 +43,7 @@ export type AlgorithmId =
   | "dfs"
   | "dijkstra"
   | "bellman-ford"
+  | "floyd-warshall"
   | "kahn"
   | "prim"
   | "kruskal";

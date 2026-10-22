@@ -23,6 +23,8 @@ export function runAlgorithm(
       return engine.dijkstra(graph, source, target);
     case "bellman-ford":
       return engine.bellmanFord(graph, source, target);
+    case "floyd-warshall":
+      return engine.floydWarshall(graph, source, target);
     case "kahn":
       return engine.kahn(graph);
     case "prim":

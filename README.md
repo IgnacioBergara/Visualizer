@@ -2,7 +2,20 @@
 
 Visualizador interactivo de algoritmos de grafos. Los algoritmos están escritos en **C++20**, se compilan a **WebAssembly** con Emscripten y se animan en el navegador con **TypeScript + Cytoscape.js**.
 
-Algoritmos actuales: **BFS**, **DFS** y **Dijkstra**.
+## Algoritmos
+
+| Algoritmo | Qué muestra | Estructuras propias |
+|---|---|---|
+| **BFS** | Recorrido por niveles | `Cola` |
+| **DFS** | Recorrido recursivo con profundidad | — |
+| **Dijkstra** (O(V²)) | Camino mínimo con pesos no negativos | — |
+| **Bellman-Ford** (con cola) | Camino mínimo con pesos negativos y detección de ciclos negativos | `Cola` |
+| **Floyd-Warshall** | Matriz de distancias entre todos los pares, pivote a pivote | — |
+| **Kahn** | Orden topológico y detección de ciclos | `Cola` |
+| **Prim** (O(V²)) | Árbol de cubrimiento mínimo creciendo desde un nodo | — |
+| **Kruskal** | Árbol de cubrimiento mínimo con unión de conjuntos | `MinHeap`, `MFSet` |
+
+La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Además avisa cuando un algoritmo no aplica al grafo elegido (por ejemplo, Kahn sobre un grafo no dirigido).
 
 ## Arquitectura
 
@@ -16,17 +29,18 @@ Algoritmos actuales: **BFS**, **DFS** y **Dijkstra**.
 │     Step[]│                 │grafo (JSON)│
 │           │                 ▼           │
 │ engine/ (C++20 → engine.wasm)           │
-│  └─ bfs, dfs, dijkstra → std::vector<Step>
+│  └─ algoritmos → std::vector<Step>      │
 └─────────────────────────────────────────┘
 ```
 
-La idea clave es que **los algoritmos no animan nada**. Cada uno devuelve la lista de pasos que dio (`visit`, `explore-edge`, `discover`, `relax`, `finish`, `path-edge`). La UI reproduce esa lista y reconstruye el estado visual hasta cualquier paso, por eso se puede avanzar, retroceder o saltar con la línea de tiempo.
+La idea clave es que **los algoritmos no animan nada**. Cada uno devuelve la lista de pasos que dio (`visit`, `explore-edge`, `relax`, `path-edge`, `matrix-update`, etc., definidos en `engine/include/gv/step.hpp`). La UI reproduce esa lista y reconstruye el estado visual hasta cualquier paso, por eso se puede avanzar, retroceder o saltar con la línea de tiempo.
 
 Para agregar un algoritmo:
 
 1. Implementarlo en `engine/src/algorithms/` y declararlo en `engine/include/gv/algorithms.hpp`.
 2. Exponerlo en `engine/bindings/bindings.cpp` y tiparlo en `web/src/wasm/engine.d.ts`.
 3. Agregarlo a `AlgorithmId`, a `runAlgorithm` y al `<select>` de `index.html`.
+4. Si usa tipos de paso nuevos, interpretarlos en `web/src/player/state.ts` (estado visual y descripción).
 
 ## Estructura
 

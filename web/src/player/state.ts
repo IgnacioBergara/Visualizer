@@ -23,7 +23,14 @@ export interface VisualState {
   nodeValues: Map<number, number>;
   /** Nodos ya agregados al resultado, en orden (orden topológico). */
   output: number[];
+  /** Matriz de distancias (Floyd-Warshall), por clave `${i},${j}`. */
+  matrix: Map<string, number>;
+  /** Pivote en curso y última celda actualizada de la matriz. */
+  pivot: number | null;
+  updatedCell: { i: number; j: number } | null;
 }
+
+export const cellKey = (i: number, j: number) => `${i},${j}`;
 
 // Recalcular desde cero en cada paso es O(pasos), de sobra para grafos
 // didácticos, y hace que retroceder sea trivial.
@@ -41,11 +48,15 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
     rejectedEdges: new Set(),
     nodeValues: new Map(),
     output: [],
+    matrix: new Map(),
+    pivot: null,
+    updatedCell: null,
   };
   const parent = new Map<number, number>();
 
   for (const step of steps.slice(0, count)) {
     state.activeEdge = null;
+    state.updatedCell = null;
     switch (step.type) {
       case "discover":
         state.frontier.add(step.target);
@@ -91,8 +102,15 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
       case "reject-edge":
         state.rejectedEdges.add(edgeKey(step.node, step.target, directed));
         break;
+      case "matrix-update":
+        state.matrix.set(cellKey(step.node, step.target), step.value);
+        state.updatedCell = { i: step.node, j: step.target };
+        break;
     }
   }
+
+  // Floyd-Warshall: el pivote es el último nodo visitado que todavía no terminó.
+  if (state.current !== null && !state.finished.has(state.current)) state.pivot = state.current;
 
   for (const [child, p] of parent) state.treeEdges.add(edgeKey(p, child, directed));
   return state;
@@ -103,6 +121,7 @@ const VALUE_NAMES: Record<AlgorithmId, string> = {
   dfs: "profundidad",
   dijkstra: "distancia",
   "bellman-ford": "distancia",
+  "floyd-warshall": "distancia",
   kahn: "grado de entrada",
   prim: "costo de conexión",
   kruskal: "conjunto",
@@ -128,6 +147,7 @@ export function describeStep(
         ? `Empieza en ${t} (${value}).`
         : `${t} entra en la frontera desde ${n} (${value}).`;
     case "visit":
+      if (algorithm === "floyd-warshall") return `Pivote ${n}: ¿algún camino mejora pasando por ${n}?`;
       return algorithm === "kahn" ? `${n} sale de la cola.` : `Procesando ${n} (${value}).`;
     case "explore-edge":
       return algorithm === "kruskal"
@@ -148,6 +168,9 @@ export function describeStep(
         ? `La arista ${n} – ${t} entra al árbol (peso ${step.value}).`
         : `Camino mínimo: ${n} → ${t} (acumulado ${step.value}).`;
     case "negative-cycle":
+      if (step.node === step.target) {
+        return `${n} está en un ciclo negativo: puede volver a sí mismo con costo ${step.value}.`;
+      }
       return `Ciclo negativo: ${n} → ${t}. Las distancias que pasan por él no están definidas.`;
     case "set-value":
       if (algorithm === "kruskal") {
@@ -162,5 +185,10 @@ export function describeStep(
       return `${n} nunca llega a grado 0 (le quedan ${step.value}): hay un ciclo y no existe orden topológico.`;
     case "reject-edge":
       return `${n} y ${t} ya están en el mismo conjunto: la arista formaría un ciclo y se descarta.`;
+    case "matrix-update":
+      if (step.node === step.target) return `dist(${n}→${n}) = 0.`;
+      return step.aux < 0
+        ? `dist(${n}→${t}) = ${step.value} (arista directa).`
+        : `dist(${n}→${t}) mejora a ${step.value} pasando por ${labels[step.aux]}.`;
   }
 }

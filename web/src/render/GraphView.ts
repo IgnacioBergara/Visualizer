@@ -2,7 +2,7 @@ import cytoscape from "cytoscape";
 import type { SampleGraph } from "../graph/samples";
 import { edgeKey, type VisualState } from "../player/state";
 
-const STATE_CLASSES = "frontier visited finished current active tree path cycle rejected";
+const STATE_CLASSES = "frontier visited finished current active tree path cycle rejected focus";
 
 // Cytoscape no lee variables CSS, así que tomamos los colores del tema al crear la vista.
 function themeColor(name: string): string {
@@ -69,6 +69,9 @@ export class GraphView {
         if (state.finished.has(i)) node.addClass("finished");
         if (state.current === i) node.addClass("current");
         if (state.cycleNodes.has(i)) node.addClass("cycle");
+        if (state.updatedCell && (state.updatedCell.i === i || state.updatedCell.j === i)) {
+          node.addClass("focus");
+        }
       });
 
       for (const key of state.treeEdges) this.cy.getElementById(key).addClass("tree");
@@ -135,6 +138,7 @@ export class GraphView {
       { selector: "node.frontier", style: { "background-color": c.frontier } },
       { selector: "node.visited", style: { "background-color": c.visited } },
       { selector: "node.finished", style: { "background-color": c.finished } },
+      { selector: "node.focus", style: { "background-color": c.frontier } },
       { selector: "node.current", style: { "border-color": c.current, "border-width": 5 } },
       { selector: "edge.tree", style: { "line-color": c.visited, "target-arrow-color": c.visited, width: 4 } },
       { selector: "edge.active", style: { "line-color": c.active, "target-arrow-color": c.active, width: 5 } },
