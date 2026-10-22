@@ -93,7 +93,7 @@ h1 {
 }
 
 .hint {
-  margin: -8px 0 0;
+  margin: -6px 0 0;
   font-size: 0.8rem;
   color: var(--muted);
 }
@@ -103,18 +103,118 @@ h1 {
   gap: 10px;
 }
 
-.row:not(:has(> .field:not([hidden]))) {
+/* Una fila de campos (Origen/Destino) con todos ocultos no deja hueco. */
+.row:has(> .field):not(:has(> .field:not([hidden]))) {
   display: none;
 }
 
 select,
-button {
+button,
+.button,
+input[type="number"] {
   font: inherit;
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
+}
+
+input[type="number"] {
+  width: 100%;
+  min-width: 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stack[hidden] {
+  display: none;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.graph-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.graph-picker select {
+  width: 100%;
+  min-width: 0;
+}
+
+.help {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+}
+
+.help b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.check input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.edge-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 0.85rem;
+}
+
+.edge-editor[hidden] {
+  display: none;
+}
+
+.editor-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.editor-actions > :first-child {
+  grid-column: 1 / -1;
+}
+
+.button {
+  cursor: pointer;
+  text-align: center;
+}
+
+.message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.message.error {
+  color: var(--cycle);
 }
 
 .controls {
