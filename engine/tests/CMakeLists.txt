@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(engine_tests
     grafo_test.cpp
     tads_test.cpp
+    bellman_ford_test.cpp
     bfs_test.cpp
     dfs_test.cpp
     dijkstra_test.cpp

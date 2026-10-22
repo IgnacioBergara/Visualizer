@@ -14,6 +14,10 @@ Steps dfs(const Grafo& graph, int from);
 // emite el camino mínimo hasta `target` como pasos PathEdge.
 Steps dijkstra(const Grafo& graph, int source, int target = -1);
 
+// Admite pesos negativos. Si encuentra un ciclo negativo alcanzable emite sus
+// aristas como NegativeCycle y termina; si no, se comporta como dijkstra().
+Steps bellmanFord(const Grafo& g, int start, int target = -1);
+
 // Árbol de cubrimiento mínimo (grafo no dirigido). Cada arista que entra al
 // árbol se emite como PathEdge con su peso.
 Steps prim(const Grafo& graph, int source);

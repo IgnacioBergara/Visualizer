@@ -6,6 +6,7 @@ export interface EngineModule {
   bfs(graph: GraphDescription, source: number): Step[];
   dfs(graph: GraphDescription, source: number): Step[];
   dijkstra(graph: GraphDescription, source: number, target: number): Step[];
+  bellmanFord(graph: GraphDescription, source: number, target: number): Step[];
   prim(graph: GraphDescription, source: number): Step[];
 }
 

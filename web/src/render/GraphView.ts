@@ -1,8 +1,8 @@
 import cytoscape from "cytoscape";
-import type { SampleGraph } from "../graph/sample";
+import type { SampleGraph } from "../graph/samples";
 import { edgeKey, type VisualState } from "../player/state";
 
-const STATE_CLASSES = "frontier visited finished current active tree path";
+const STATE_CLASSES = "frontier visited finished current active tree path cycle";
 
 // Cytoscape no lee variables CSS, así que tomamos los colores del tema al crear la vista.
 function themeColor(name: string): string {
@@ -11,6 +11,7 @@ function themeColor(name: string): string {
 
 export class GraphView {
   private readonly cy: cytoscape.Core;
+  private readonly resizeObserver: ResizeObserver;
 
   constructor(
     container: HTMLElement,
@@ -42,10 +43,16 @@ export class GraphView {
     });
 
     // Cytoscape solo encaja el grafo al crearse; lo reencajamos si cambia el tamaño.
-    new ResizeObserver(() => {
+    this.resizeObserver = new ResizeObserver(() => {
       this.cy.resize();
       this.cy.fit(undefined, 40);
-    }).observe(container);
+    });
+    this.resizeObserver.observe(container);
+  }
+
+  destroy(): void {
+    this.resizeObserver.disconnect();
+    this.cy.destroy();
   }
 
   render(state: VisualState): void {
@@ -60,10 +67,12 @@ export class GraphView {
         if (state.visited.has(i)) node.addClass("visited");
         if (state.finished.has(i)) node.addClass("finished");
         if (state.current === i) node.addClass("current");
+        if (state.cycleNodes.has(i)) node.addClass("cycle");
       });
 
       for (const key of state.treeEdges) this.cy.getElementById(key).addClass("tree");
       for (const key of state.pathEdges) this.cy.getElementById(key).addClass("path");
+      for (const key of state.cycleEdges) this.cy.getElementById(key).addClass("cycle");
       if (state.activeEdge) this.cy.getElementById(state.activeEdge).addClass("active");
     });
   }
@@ -80,6 +89,7 @@ export class GraphView {
       current: themeColor("--current"),
       active: themeColor("--active"),
       path: themeColor("--path"),
+      cycle: themeColor("--cycle"),
       bg: themeColor("--bg"),
     };
     const directed = this.data.graph.directed;
@@ -127,6 +137,11 @@ export class GraphView {
       { selector: "edge.tree", style: { "line-color": c.visited, "target-arrow-color": c.visited, width: 4 } },
       { selector: "edge.active", style: { "line-color": c.active, "target-arrow-color": c.active, width: 5 } },
       { selector: "edge.path", style: { "line-color": c.path, "target-arrow-color": c.path, width: 6 } },
+      { selector: "node.cycle", style: { "border-color": c.cycle, "border-width": 5 } },
+      {
+        selector: "edge.cycle",
+        style: { "line-color": c.cycle, "target-arrow-color": c.cycle, "line-style": "dashed", width: 6 },
+      },
     ];
   }
 }

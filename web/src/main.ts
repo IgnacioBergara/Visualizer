@@ -1,14 +1,17 @@
 import "./style.css";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
-import { sampleGraph } from "./graph/sample";
+import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
 import { deriveState, describeStep } from "./player/state";
 import { GraphView } from "./render/GraphView";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
+const NEEDS_TARGET = new Set<AlgorithmId>(["dijkstra", "bellman-ford"]);
+
 const ui = {
+  sample: $<HTMLSelectElement>("sample"),
   algorithm: $<HTMLSelectElement>("algorithm"),
   source: $<HTMLSelectElement>("source"),
   target: $<HTMLSelectElement>("target"),
@@ -23,39 +26,67 @@ const ui = {
   description: $<HTMLParagraphElement>("description"),
 };
 
-const { graph, labels } = sampleGraph;
-const view = new GraphView($("graph"), sampleGraph);
+let sample: SampleGraph = samples.weighted;
+let view = new GraphView($("graph"), sample);
 let steps: Step[] = [];
+// Mensaje a mostrar cuando el algoritmo no aplica al grafo elegido.
+let notice: string | null = null;
 
 const player = new Player((position, total, playing) => {
-  view.render(deriveState(steps, position, graph.directed));
+  view.render(deriveState(steps, position, sample.graph.directed));
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;
-  ui.description.textContent = describeStep(
-    steps[position - 1],
-    labels,
-    ui.algorithm.value as AlgorithmId,
-  );
+  ui.description.textContent =
+    notice ?? describeStep(steps[position - 1], sample.labels, ui.algorithm.value as AlgorithmId);
   ui.play.textContent = playing ? "⏸" : "▶";
   ui.back.disabled = position === 0;
   ui.forward.disabled = position === total;
 });
 
-for (const select of [ui.source, ui.target]) {
-  labels.forEach((label, i) => select.add(new Option(label, String(i))));
+for (const [id, s] of Object.entries(samples)) ui.sample.add(new Option(s.name, id));
+
+function fillNodeSelects(): void {
+  for (const select of [ui.source, ui.target]) {
+    select.replaceChildren(...sample.labels.map((label, i) => new Option(label, String(i))));
+  }
+  ui.target.value = String(sample.labels.length - 1);
 }
-ui.target.value = String(labels.length - 1);
+
+function selectSample(id: SampleId): void {
+  sample = samples[id];
+  view.destroy();
+  view = new GraphView($("graph"), sample);
+  fillNodeSelects();
+}
 
 function recompute(engine: EngineModule): void {
   const algorithm = ui.algorithm.value as AlgorithmId;
-  ui.targetField.hidden = algorithm !== "dijkstra";
-  steps = runAlgorithm(engine, algorithm, graph, Number(ui.source.value), Number(ui.target.value));
+  ui.targetField.hidden = !NEEDS_TARGET.has(algorithm);
+  if (algorithm === "prim" && sample.graph.directed) {
+    notice = "Prim necesita un grafo no dirigido. Elegí el grafo ponderado.";
+    steps = [];
+  } else {
+    notice = null;
+    steps = runAlgorithm(
+      engine,
+      algorithm,
+      sample.graph,
+      Number(ui.source.value),
+      Number(ui.target.value),
+    );
+  }
   player.load(steps);
 }
 
+fillNodeSelects();
+
 async function main(): Promise<void> {
   const engine = await loadEngine();
+  ui.sample.addEventListener("change", () => {
+    selectSample(ui.sample.value as SampleId);
+    recompute(engine);
+  });
   for (const select of [ui.algorithm, ui.source, ui.target]) {
     select.addEventListener("change", () => recompute(engine));
   }

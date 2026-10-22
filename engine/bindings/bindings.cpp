@@ -53,6 +53,9 @@ val runDfs(const val& desc, int source) {
 val runDijkstra(const val& desc, int source, int target) {
     return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::dijkstra(g, source, target)); });
 }
+val runBellmanFord(const val& desc, int source, int target) {
+    return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::bellmanFord(g, source, target)); });
+}
 val runPrim(const val& desc, int source) {
     return withGraph(desc, [&](const gv::Grafo& g) { return stepsToJs(gv::prim(g, source)); });
 }
@@ -63,5 +66,6 @@ EMSCRIPTEN_BINDINGS(gv_engine) {
     emscripten::function("bfs", &runBfs);
     emscripten::function("dfs", &runDfs);
     emscripten::function("dijkstra", &runDijkstra);
+    emscripten::function("bellmanFord", &runBellmanFord);
     emscripten::function("prim", &runPrim);
 }

@@ -14,6 +14,7 @@ enum class StepType {
     Relax,       // la distancia de `target` mejora a `value` pasando por `node`
     Finish,      // `node` queda completamente procesado
     PathEdge,    // la arista node -> target forma parte del camino resultado
+    NegativeCycle, // la arista node -> target forma parte de un ciclo negativo
 };
 
 struct Step {
@@ -33,6 +34,7 @@ constexpr std::string_view toString(StepType type) {
         case StepType::Relax: return "relax";
         case StepType::Finish: return "finish";
         case StepType::PathEdge: return "path-edge";
+        case StepType::NegativeCycle: return "negative-cycle";
     }
     return "unknown";
 }

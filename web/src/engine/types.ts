@@ -6,7 +6,8 @@ export type StepType =
   | "discover"
   | "relax"
   | "finish"
-  | "path-edge";
+  | "path-edge"
+  | "negative-cycle";
 
 export interface Step {
   type: StepType;
@@ -30,4 +31,4 @@ export interface GraphDescription {
   edges: GraphEdge[];
 }
 
-export type AlgorithmId = "bfs" | "dfs" | "dijkstra" | "prim";
+export type AlgorithmId = "bfs" | "dfs" | "dijkstra" | "bellman-ford" | "prim";

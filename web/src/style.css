@@ -16,6 +16,7 @@
   --current: #d9480f;
   --active: #d9480f;
   --path: #c2255c;
+  --cycle: #e03131;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,6 +37,7 @@
     --current: #ff8a4c;
     --active: #ff8a4c;
     --path: #f06595;
+    --cycle: #ff6b6b;
   }
 }
 
@@ -171,6 +173,7 @@ input[type="range"] {
 .swatch.visited { background: var(--visited); }
 .swatch.finished { background: var(--finished); }
 .swatch.path { background: var(--path); border-radius: 2px; }
+.swatch.cycle { background: var(--cycle); border-radius: 2px; }
 
 .graph {
   min-width: 0;

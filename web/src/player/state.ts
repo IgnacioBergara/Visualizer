@@ -16,6 +16,8 @@ export interface VisualState {
   finished: Set<number>;
   treeEdges: Set<EdgeKey>;
   pathEdges: Set<EdgeKey>;
+  cycleNodes: Set<number>;
+  cycleEdges: Set<EdgeKey>;
   /** Número que se muestra bajo cada nodo: nivel (BFS), profundidad (DFS) o distancia (Dijkstra). */
   nodeValues: Map<number, number>;
 }
@@ -31,6 +33,8 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
     finished: new Set(),
     treeEdges: new Set(),
     pathEdges: new Set(),
+    cycleNodes: new Set(),
+    cycleEdges: new Set(),
     nodeValues: new Map(),
   };
   const parent = new Map<number, number>();
@@ -44,6 +48,9 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
         if (step.node >= 0) parent.set(step.target, step.node);
         break;
       case "relax":
+        // En Bellman-Ford un nodo ya procesado puede mejorar y volver a la cola.
+        state.visited.delete(step.target);
+        state.finished.delete(step.target);
         state.frontier.add(step.target);
         state.nodeValues.set(step.target, step.value);
         if (step.node >= 0) parent.set(step.target, step.node);
@@ -62,6 +69,11 @@ export function deriveState(steps: readonly Step[], count: number, directed: boo
       case "path-edge":
         state.pathEdges.add(edgeKey(step.node, step.target, directed));
         break;
+      case "negative-cycle":
+        state.cycleNodes.add(step.node);
+        state.cycleNodes.add(step.target);
+        state.cycleEdges.add(edgeKey(step.node, step.target, directed));
+        break;
     }
   }
 
@@ -73,6 +85,7 @@ const VALUE_NAMES: Record<AlgorithmId, string> = {
   bfs: "nivel",
   dfs: "profundidad",
   dijkstra: "distancia",
+  "bellman-ford": "distancia",
   prim: "costo de conexión",
 };
 
@@ -105,5 +118,7 @@ export function describeStep(
       return algorithm === "prim"
         ? `La arista ${n} – ${t} entra al árbol (peso ${step.value}).`
         : `Camino mínimo: ${n} → ${t} (acumulado ${step.value}).`;
+    case "negative-cycle":
+      return `Ciclo negativo: ${n} → ${t}. Las distancias que pasan por él no están definidas.`;
   }
 }
