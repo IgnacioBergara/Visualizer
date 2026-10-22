@@ -9,18 +9,28 @@ function themeColor(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
+export interface Viewport {
+  zoom: number;
+  pan: { x: number; y: number };
+}
+
 export class GraphView {
   private readonly cy: cytoscape.Core;
   private readonly resizeObserver: ResizeObserver;
 
+  /**
+   * Con `viewport` se conserva la cámara anterior en vez de encajar el grafo;
+   * el editor lo usa para que la vista no salte al redibujar tras cada cambio.
+   */
   constructor(
     container: HTMLElement,
     private readonly data: SampleGraph,
+    viewport?: Viewport,
   ) {
     const { graph, labels, positions } = data;
     this.cy = cytoscape({
       container,
-      layout: { name: "preset", fit: true, padding: 40 },
+      layout: { name: "preset", fit: !viewport, padding: 40 },
       userZoomingEnabled: true,
       wheelSensitivity: 0.2,
       elements: [
@@ -43,11 +53,26 @@ export class GraphView {
     });
 
     // Cytoscape solo encaja el grafo al crearse; lo reencajamos si cambia el tamaño.
+    if (viewport) this.cy.viewport(viewport);
+
+    // El observer avisa una vez al empezar a observar; con cámara fija esa
+    // primera vez solo se ajusta el tamaño, sin reencajar.
+    let keepViewport = viewport !== undefined;
     this.resizeObserver = new ResizeObserver(() => {
       this.cy.resize();
-      this.cy.fit(undefined, 40);
+      if (keepViewport) keepViewport = false;
+      else this.cy.fit(undefined, 40);
     });
     this.resizeObserver.observe(container);
+  }
+
+  /** Instancia de Cytoscape, para que el editor escuche clics y arrastres. */
+  get core(): cytoscape.Core {
+    return this.cy;
+  }
+
+  get viewport(): Viewport {
+    return { zoom: this.cy.zoom(), pan: { ...this.cy.pan() } };
   }
 
   destroy(): void {
@@ -128,6 +153,8 @@ export class GraphView {
           "target-arrow-shape": directed ? "triangle" : "none",
           "curve-style": "bezier",
           label: "data(weight)",
+          // El peso también recibe clics: es más fácil de acertar que la línea.
+          "text-events": "yes",
           "font-size": 12,
           color: c.text,
           "text-background-color": c.bg,
@@ -145,6 +172,12 @@ export class GraphView {
       { selector: "edge.path", style: { "line-color": c.path, "target-arrow-color": c.path, width: 6 } },
       { selector: "edge.rejected", style: { "line-style": "dotted", opacity: 0.35 } },
       { selector: "node.cycle", style: { "border-color": c.cycle, "border-width": 5 } },
+      // Editor: nodo elegido como origen de la próxima arista y arista seleccionada.
+      { selector: "node.pending", style: { "border-color": c.current, "border-width": 5 } },
+      {
+        selector: "edge.selected",
+        style: { "line-color": c.current, "target-arrow-color": c.current, width: 5 },
+      },
       {
         selector: "edge.cycle",
         style: { "line-color": c.cycle, "target-arrow-color": c.cycle, "line-style": "dashed", width: 6 },

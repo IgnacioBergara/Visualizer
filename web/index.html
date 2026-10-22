@@ -13,71 +13,119 @@
           <p class="subtitle">Motor en C++ → WebAssembly</p>
         </header>
 
-        <label class="field">
-          <span>Grafo</span>
-          <select id="sample"></select>
-        </label>
-        <p class="hint" id="sample-hint" hidden></p>
+        <!-- Modo reproducción: elegir grafo y algoritmo y ver los pasos -->
+        <div class="stack" id="run-panel">
+          <div class="graph-picker">
+            <label class="field">
+              <span>Grafo</span>
+              <select id="sample"></select>
+            </label>
+            <button id="edit-graph" title="Crear o editar un grafo propio">✎ Editar</button>
+          </div>
+          <p class="hint" id="sample-hint" hidden></p>
 
-        <label class="field">
-          <span>Algoritmo</span>
-          <select id="algorithm">
-            <option value="bfs">BFS (anchura)</option>
-            <option value="dfs">DFS (profundidad)</option>
-            <option value="dijkstra">Dijkstra (camino mínimo)</option>
-            <option value="bellman-ford">Bellman-Ford (pesos negativos)</option>
-            <option value="floyd-warshall">Floyd-Warshall (todos los pares)</option>
-            <option value="kahn">Kahn (orden topológico)</option>
-            <option value="prim">Prim (árbol de cubrimiento mínimo)</option>
-            <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
-          </select>
-        </label>
+          <label class="field">
+            <span>Algoritmo</span>
+            <select id="algorithm">
+              <option value="bfs">BFS (anchura)</option>
+              <option value="dfs">DFS (profundidad)</option>
+              <option value="dijkstra">Dijkstra (camino mínimo)</option>
+              <option value="bellman-ford">Bellman-Ford (pesos negativos)</option>
+              <option value="floyd-warshall">Floyd-Warshall (todos los pares)</option>
+              <option value="kahn">Kahn (orden topológico)</option>
+              <option value="prim">Prim (árbol de cubrimiento mínimo)</option>
+              <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
+            </select>
+          </label>
 
-        <div class="row">
-          <label class="field" id="source-field">
-            <span>Origen</span>
-            <select id="source"></select>
+          <div class="row">
+            <label class="field" id="source-field">
+              <span>Origen</span>
+              <select id="source"></select>
+            </label>
+            <label class="field" id="target-field">
+              <span>Destino</span>
+              <select id="target"></select>
+            </label>
+          </div>
+
+          <div class="controls">
+            <button id="reset" title="Al inicio">⏮</button>
+            <button id="back" title="Paso atrás">◀</button>
+            <button id="play" class="primary" title="Reproducir / pausar">▶</button>
+            <button id="forward" title="Paso adelante">▶|</button>
+          </div>
+
+          <label class="field">
+            <span>Velocidad</span>
+            <input id="speed" type="range" min="100" max="1500" step="100" value="600" />
           </label>
-          <label class="field" id="target-field">
-            <span>Destino</span>
-            <select id="target"></select>
-          </label>
+
+          <input id="timeline" type="range" min="0" max="0" value="0" aria-label="Línea de tiempo" />
+          <p class="counter" id="counter">0 / 0</p>
+          <p class="description" id="description">Cargando motor…</p>
+
+          <section class="output" id="output-panel" hidden>
+            <span id="output-title"></span>
+            <ol id="output"></ol>
+          </section>
+
+          <section class="matrix" id="matrix-panel" hidden>
+            <span>Matriz de distancias (fila → columna)</span>
+            <table id="matrix"></table>
+          </section>
+
+          <ul class="legend">
+            <li><i class="swatch frontier"></i>En la frontera</li>
+            <li><i class="swatch visited"></i>Visitado</li>
+            <li><i class="swatch finished"></i>Terminado</li>
+            <li><i class="swatch path"></i>Resultado (camino o árbol)</li>
+            <li><i class="swatch cycle"></i>Ciclo (negativo o que impide el orden)</li>
+            <li><i class="swatch rejected"></i>Arista descartada</li>
+          </ul>
         </div>
 
-        <div class="controls">
-          <button id="reset" title="Al inicio">⏮</button>
-          <button id="back" title="Paso atrás">◀</button>
-          <button id="play" class="primary" title="Reproducir / pausar">▶</button>
-          <button id="forward" title="Paso adelante">▶|</button>
+        <!-- Modo edición: armar el grafo personalizado -->
+        <div class="stack" id="editor-panel" hidden>
+          <h2>Editar grafo</h2>
+          <ul class="help">
+            <li><b>Clic en el fondo</b>: nuevo nodo</li>
+            <li><b>Clic en un nodo y luego en otro</b>: arista</li>
+            <li><b>Clic en una arista</b>: cambiar su peso</li>
+            <li><b>Clic derecho</b>: borrar nodo o arista</li>
+            <li><b>Arrastrar</b>: mover un nodo</li>
+          </ul>
+
+          <label class="check">
+            <input type="checkbox" id="editor-directed" />
+            Dirigido
+          </label>
+
+          <label class="field">
+            <span>Peso de las aristas nuevas</span>
+            <input type="number" id="editor-weight" value="1" step="any" />
+          </label>
+
+          <div class="edge-editor" id="editor-edge" hidden>
+            <span>Arista <b id="editor-edge-label"></b></span>
+            <div class="row">
+              <input type="number" id="editor-edge-weight" step="any" aria-label="Peso de la arista" />
+              <button id="editor-edge-delete">Borrar</button>
+            </div>
+          </div>
+
+          <p class="counter" id="editor-summary"></p>
+
+          <div class="editor-actions">
+            <button id="editor-clear">Vaciar</button>
+            <button id="editor-export">Exportar JSON</button>
+            <label class="button" for="editor-import">Importar JSON</label>
+            <input type="file" id="editor-import" accept=".json,application/json" hidden />
+          </div>
+          <p class="message" id="editor-message" hidden></p>
+
+          <button class="primary" id="editor-done">Listo</button>
         </div>
-
-        <label class="field">
-          <span>Velocidad</span>
-          <input id="speed" type="range" min="100" max="1500" step="100" value="600" />
-        </label>
-
-        <input id="timeline" type="range" min="0" max="0" value="0" aria-label="Línea de tiempo" />
-        <p class="counter" id="counter">0 / 0</p>
-        <p class="description" id="description">Cargando motor…</p>
-
-        <section class="output" id="output-panel" hidden>
-          <span id="output-title"></span>
-          <ol id="output"></ol>
-        </section>
-
-        <section class="matrix" id="matrix-panel" hidden>
-          <span>Matriz de distancias (fila → columna)</span>
-          <table id="matrix"></table>
-        </section>
-
-        <ul class="legend">
-          <li><i class="swatch frontier"></i>En la frontera</li>
-          <li><i class="swatch visited"></i>Visitado</li>
-          <li><i class="swatch finished"></i>Terminado</li>
-          <li><i class="swatch path"></i>Resultado (camino o árbol)</li>
-          <li><i class="swatch cycle"></i>Ciclo (negativo o que impide el orden)</li>
-          <li><i class="swatch rejected"></i>Arista descartada</li>
-        </ul>
       </aside>
 
       <main id="graph" class="graph"></main>

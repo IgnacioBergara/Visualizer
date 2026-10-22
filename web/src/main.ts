@@ -1,7 +1,9 @@
 import "./style.css";
+import { GraphEditor } from "./editor/GraphEditor";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
 import { incompatibility } from "./graph/compatibility";
+import { copyAsCustom, emptyGraph, loadCustom, saveCustom } from "./graph/customGraph";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
 import { cellKey, deriveState, describeStep, type VisualState } from "./player/state";
@@ -14,6 +16,10 @@ const NO_SOURCE = new Set<AlgorithmId>(["kahn", "kruskal"]);
 const BUILDS_TREE = new Set<AlgorithmId>(["prim", "kruskal"]);
 
 const ui = {
+  runPanel: $<HTMLElement>("run-panel"),
+  editorPanel: $<HTMLElement>("editor-panel"),
+  editGraph: $<HTMLButtonElement>("edit-graph"),
+  editorDone: $<HTMLButtonElement>("editor-done"),
   sample: $<HTMLSelectElement>("sample"),
   sampleHint: $<HTMLParagraphElement>("sample-hint"),
   algorithm: $<HTMLSelectElement>("algorithm"),
@@ -36,8 +42,35 @@ const ui = {
   matrix: $<HTMLTableElement>("matrix"),
 };
 
-let sample: SampleGraph = samples.weighted;
-let view = new GraphView($("graph"), sample);
+const editorUi = {
+  directed: $<HTMLInputElement>("editor-directed"),
+  weight: $<HTMLInputElement>("editor-weight"),
+  edgePanel: $<HTMLElement>("editor-edge"),
+  edgeLabel: $<HTMLElement>("editor-edge-label"),
+  edgeWeight: $<HTMLInputElement>("editor-edge-weight"),
+  edgeDelete: $<HTMLButtonElement>("editor-edge-delete"),
+  clear: $<HTMLButtonElement>("editor-clear"),
+  exportButton: $<HTMLButtonElement>("editor-export"),
+  importInput: $<HTMLInputElement>("editor-import"),
+  summary: $<HTMLParagraphElement>("editor-summary"),
+  message: $<HTMLParagraphElement>("editor-message"),
+};
+
+/** Los ejemplos fijos más el grafo personalizado, si existe. */
+type GraphId = SampleId | "custom";
+
+const sampleIds = Object.keys(samples) as SampleId[];
+let customGraph: SampleGraph | null = loadCustom();
+
+const graphFor = (id: GraphId): SampleGraph =>
+  id === "custom" ? (customGraph ?? emptyGraph()) : samples[id];
+const graphIds = (): GraphId[] => (customGraph ? [...sampleIds, "custom"] : sampleIds);
+
+// Si hay un grafo personalizado guardado, se arranca mostrándolo.
+let currentId: GraphId = customGraph ? "custom" : "weighted";
+let sample: SampleGraph = graphFor(currentId);
+let view: GraphView | null = new GraphView($("graph"), sample);
+let editor: GraphEditor | null = null;
 let steps: Step[] = [];
 
 function chip(text: string): HTMLLIElement {
@@ -97,23 +130,20 @@ function renderMatrix(state: VisualState): void {
 const player = new Player((position, total, playing) => {
   const state = deriveState(steps, position, sample.graph.directed);
   // En Kruskal el valor de cada nodo es su representante: se muestra su etiqueta.
-  view.render(state, ui.algorithm.value === "kruskal" ? (v) => sample.labels[v] : String);
+  view?.render(state, ui.algorithm.value === "kruskal" ? (v) => sample.labels[v] : String);
   renderOutput(state, position);
   renderMatrix(state);
   ui.timeline.max = String(total);
   ui.timeline.value = String(position);
   ui.counter.textContent = `${position} / ${total}`;
-  ui.description.textContent = describeStep(
-    steps[position - 1],
-    sample.labels,
-    ui.algorithm.value as AlgorithmId,
-  );
+  ui.description.textContent =
+    sample.graph.nodeCount === 0
+      ? "El grafo está vacío: tocá «✎ Editar» para agregarle nodos."
+      : describeStep(steps[position - 1], sample.labels, ui.algorithm.value as AlgorithmId);
   ui.play.textContent = playing ? "⏸" : "▶";
   ui.back.disabled = position === 0;
   ui.forward.disabled = position === total;
 });
-
-for (const [id, s] of Object.entries(samples)) ui.sample.add(new Option(s.name, id));
 
 function fillNodeSelects(): void {
   for (const select of [ui.source, ui.target]) {
@@ -122,25 +152,28 @@ function fillNodeSelects(): void {
   ui.target.value = String(sample.labels.length - 1);
 }
 
-function selectSample(id: SampleId): void {
-  sample = samples[id];
+function selectSample(id: GraphId): void {
+  currentId = id;
+  sample = graphFor(id);
   ui.sample.value = id;
-  view.destroy();
+  view?.destroy();
   view = new GraphView($("graph"), sample);
   fillNodeSelects();
 }
 
-const sampleIds = Object.keys(samples) as SampleId[];
-
-// Deshabilita en el selector los grafos a los que no se puede aplicar el algoritmo.
+// Opciones del selector de grafo; las incompatibles con el algoritmo quedan deshabilitadas.
 function updateSampleOptions(): void {
   const algorithm = ui.algorithm.value as AlgorithmId;
-  for (const option of ui.sample.options) {
-    const s = samples[option.value as SampleId];
-    const reason = incompatibility(algorithm, s.graph);
-    option.disabled = reason !== null;
-    option.text = reason ? `${s.name} — ${reason}` : s.name;
-  }
+  ui.sample.replaceChildren(
+    ...graphIds().map((id) => {
+      const g = graphFor(id);
+      const reason = incompatibility(algorithm, g.graph);
+      const option = new Option(reason ? `${g.name} — ${reason}` : g.name, id);
+      option.disabled = reason !== null;
+      return option;
+    }),
+  );
+  ui.sample.value = currentId;
 }
 
 // Si el grafo elegido no sirve para el algoritmo, pasa al primero que sí sirva.
@@ -150,24 +183,52 @@ function ensureCompatibleSample(): void {
   ui.sampleHint.hidden = reason === null;
   if (reason === null) return;
 
-  const replacement = sampleIds.find((id) => incompatibility(algorithm, samples[id].graph) === null);
+  const replacement = graphIds().find((id) => incompatibility(algorithm, graphFor(id).graph) === null);
   if (!replacement) return;
   selectSample(replacement);
-  ui.sampleHint.textContent = `Se cambió a «${samples[replacement].name}»: ${reason}.`;
+  ui.sampleHint.textContent = `Se cambió a «${graphFor(replacement).name}»: ${reason}.`;
 }
 
 function recompute(engine: EngineModule): void {
   const algorithm = ui.algorithm.value as AlgorithmId;
   ui.targetField.hidden = !NEEDS_TARGET.has(algorithm);
   ui.sourceField.hidden = NO_SOURCE.has(algorithm);
-  steps = runAlgorithm(
-    engine,
-    algorithm,
-    sample.graph,
-    Number(ui.source.value),
-    Number(ui.target.value),
-  );
+  steps =
+    sample.graph.nodeCount === 0
+      ? []
+      : runAlgorithm(engine, algorithm, sample.graph, Number(ui.source.value), Number(ui.target.value));
   player.load(steps);
+}
+
+// El editor parte del grafo que se está viendo: el personalizado o una copia del ejemplo.
+function startEditing(): void {
+  const replacesCustom = currentId !== "custom" && (customGraph?.graph.nodeCount ?? 0) > 0;
+  if (replacesCustom && !confirm("Esto reemplaza tu grafo personalizado por una copia de este ejemplo. ¿Seguir?")) {
+    return;
+  }
+  player.pause();
+  const viewport = view?.viewport;
+  view?.destroy();
+  view = null;
+  const start = currentId === "custom" && customGraph ? customGraph : copyAsCustom(sample);
+  editor = new GraphEditor($("graph"), start, editorUi, viewport);
+  ui.runPanel.hidden = true;
+  ui.editorPanel.hidden = false;
+}
+
+function finishEditing(engine: EngineModule): void {
+  if (!editor) return;
+  customGraph = editor.finish();
+  editor = null;
+  saveCustom(customGraph);
+  ui.editorPanel.hidden = true;
+  ui.runPanel.hidden = false;
+  ui.sampleHint.hidden = true;
+
+  selectSample("custom");
+  updateSampleOptions();
+  ensureCompatibleSample();
+  recompute(engine);
 }
 
 fillNodeSelects();
@@ -176,7 +237,7 @@ updateSampleOptions();
 async function main(): Promise<void> {
   const engine = await loadEngine();
   ui.sample.addEventListener("change", () => {
-    selectSample(ui.sample.value as SampleId);
+    selectSample(ui.sample.value as GraphId);
     ui.sampleHint.hidden = true;
     recompute(engine);
   });
@@ -188,6 +249,8 @@ async function main(): Promise<void> {
   for (const select of [ui.source, ui.target]) {
     select.addEventListener("change", () => recompute(engine));
   }
+  ui.editGraph.addEventListener("click", startEditing);
+  ui.editorDone.addEventListener("click", () => finishEditing(engine));
   ui.play.addEventListener("click", () => player.toggle());
   ui.forward.addEventListener("click", () => player.stepForward());
   ui.back.addEventListener("click", () => player.stepBack());
@@ -197,7 +260,8 @@ async function main(): Promise<void> {
   ui.speed.addEventListener("input", () => player.setDelay(1600 - Number(ui.speed.value)));
 
   document.addEventListener("keydown", (e) => {
-    if (e.target instanceof HTMLSelectElement) return;
+    // Sin atajos mientras se edita o se escribe en un campo.
+    if (editor || e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
     if (e.key === "ArrowRight") player.stepForward();
     else if (e.key === "ArrowLeft") player.stepBack();
     else if (e.key === " ") {
