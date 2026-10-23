@@ -15,7 +15,26 @@ Visualizador interactivo de algoritmos de grafos. Los algoritmos están escritos
 | **Prim** (O(V²)) | Árbol de cubrimiento mínimo creciendo desde un nodo | — |
 | **Kruskal** | Árbol de cubrimiento mínimo con unión de conjuntos | `MinHeap`, `MFSet` |
 
-La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Además avisa cuando un algoritmo no aplica al grafo elegido (por ejemplo, Kahn sobre un grafo no dirigido).
+La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Los grafos que no sirven para el algoritmo elegido aparecen deshabilitados con el motivo (por ejemplo, Dijkstra con pesos negativos).
+
+## Editor de grafos
+
+Con **✎ Editar** se arma un grafo propio, partiendo de cero o de una copia del ejemplo que se está viendo:
+
+- Clic en el fondo: nuevo nodo. Clic en un nodo y luego en otro: arista.
+- Clic en una arista (o en su peso): cambiar el peso. Clic derecho: borrar. Arrastrar: mover.
+- Interruptor dirigido / no dirigido, **exportar e importar JSON** y guardado automático en el navegador.
+
+Formato del JSON:
+
+```json
+{
+  "version": 1,
+  "directed": false,
+  "nodes": [{ "label": "A", "x": 0, "y": 0 }, { "label": "B", "x": 150, "y": 0 }],
+  "edges": [{ "from": 0, "to": 1, "weight": 4 }]
+}
+```
 
 ## Arquitectura
 
