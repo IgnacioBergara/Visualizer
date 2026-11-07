@@ -17,6 +17,12 @@ Visualizador interactivo de algoritmos de grafos. Los algoritmos están escritos
 
 La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Los grafos que no sirven para el algoritmo elegido aparecen deshabilitados con el motivo (por ejemplo, Dijkstra con pesos negativos).
 
+## Grafos aleatorios
+
+Con **🎲 Aleatorio** se genera un grafo eligiendo cantidad de nodos, densidad, rango de pesos, si es dirigido, si es un DAG y si tiene que ser conexo. La **semilla** hace que sea reproducible: la misma semilla con las mismas opciones da siempre el mismo grafo (los nodos se acomodan con un layout de fuerzas propio que también usa la semilla).
+
+Junto al grafo aparece **qué algoritmos se pueden correr**: los incompatibles (✗), los que se pueden correr con una advertencia (!), por ejemplo Kruskal sobre un grafo no conexo arma un bosque o Bellman-Ford va a encontrar un ciclo negativo, y los que no tienen problemas (✓).
+
 ## Editor de grafos
 
 Con **✎ Editar** se arma un grafo propio, partiendo de cero o de una copia del ejemplo que se está viendo:

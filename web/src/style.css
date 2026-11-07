@@ -140,16 +140,55 @@ h2 {
   font-size: 1rem;
 }
 
-.graph-picker {
+.graph-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: -6px;
+}
+
+.seed {
   display: flex;
   align-items: flex-end;
   gap: 8px;
 }
 
-.graph-picker select {
-  width: 100%;
-  min-width: 0;
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
+
+.report ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.report li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.report .icon {
+  font-weight: 700;
+  text-align: center;
+}
+
+.report .ok .icon { color: var(--finished); }
+.report .warning .icon { color: var(--frontier); }
+.report .blocked { color: var(--muted); }
+.report .blocked .icon { color: var(--cycle); }
 
 .help {
   margin: 0;

@@ -15,12 +15,13 @@
 
         <!-- Modo reproducción: elegir grafo y algoritmo y ver los pasos -->
         <div class="stack" id="run-panel">
-          <div class="graph-picker">
-            <label class="field">
-              <span>Grafo</span>
-              <select id="sample"></select>
-            </label>
+          <label class="field">
+            <span>Grafo</span>
+            <select id="sample"></select>
+          </label>
+          <div class="graph-tools">
             <button id="edit-graph" title="Crear o editar un grafo propio">✎ Editar</button>
+            <button id="random-graph" title="Generar un grafo aleatorio">🎲 Aleatorio</button>
           </div>
           <p class="hint" id="sample-hint" hidden></p>
 
@@ -83,6 +84,56 @@
             <li><i class="swatch cycle"></i>Ciclo (negativo o que impide el orden)</li>
             <li><i class="swatch rejected"></i>Arista descartada</li>
           </ul>
+        </div>
+
+        <!-- Generador: grafo aleatorio y qué algoritmos se le pueden aplicar -->
+        <div class="stack" id="random-panel" hidden>
+          <h2>Grafo aleatorio</h2>
+
+          <div class="row">
+            <label class="field">
+              <span>Nodos</span>
+              <input type="number" id="random-nodes" min="2" max="40" value="8" />
+            </label>
+            <label class="field">
+              <span>Densidad (%)</span>
+              <input type="number" id="random-density" min="0" max="100" step="5" value="30" />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="field">
+              <span>Peso mínimo</span>
+              <input type="number" id="random-min" value="1" />
+            </label>
+            <label class="field">
+              <span>Peso máximo</span>
+              <input type="number" id="random-max" value="9" />
+            </label>
+          </div>
+
+          <label class="check"><input type="checkbox" id="random-directed" /> Dirigido</label>
+          <label class="check"><input type="checkbox" id="random-acyclic" disabled /> Sin ciclos (DAG)</label>
+          <label class="check"><input type="checkbox" id="random-connected" checked /> Conexo</label>
+
+          <div class="seed">
+            <label class="field">
+              <span>Semilla</span>
+              <input type="number" id="random-seed" min="0" />
+            </label>
+            <button id="random-reroll" title="Generar con otra semilla">🎲 Otro</button>
+          </div>
+          <p class="counter" id="random-summary"></p>
+
+          <section class="report">
+            <span>¿Qué algoritmos puedo correr?</span>
+            <ul id="random-report"></ul>
+          </section>
+
+          <div class="editor-actions">
+            <button id="random-cancel">Cancelar</button>
+            <button class="primary" id="random-use">Usar este grafo</button>
+          </div>
         </div>
 
         <!-- Modo edición: armar el grafo personalizado -->
