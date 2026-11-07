@@ -20,9 +20,11 @@
             <select id="sample"></select>
           </label>
           <div class="graph-tools">
-            <button id="edit-graph" title="Crear o editar un grafo propio">✎ Editar</button>
-            <button id="random-graph" title="Generar un grafo aleatorio">🎲 Aleatorio</button>
+            <button id="edit-graph" title="Editar este grafo (o una copia, si es un ejemplo)">✎ Editar</button>
+            <button id="new-graph" title="Crear un grafo vacío">＋ Nuevo</button>
+            <button id="random-graph" title="Generar un grafo aleatorio">🎲 Azar</button>
           </div>
+          <p class="hint" id="slots-hint" hidden></p>
           <p class="hint" id="sample-hint" hidden></p>
 
           <label class="field">
@@ -139,6 +141,10 @@
         <!-- Modo edición: armar el grafo personalizado -->
         <div class="stack" id="editor-panel" hidden>
           <h2>Editar grafo</h2>
+          <label class="field">
+            <span>Nombre</span>
+            <input type="text" id="editor-name" />
+          </label>
           <ul class="help">
             <li><b>Clic en el fondo</b>: nuevo nodo</li>
             <li><b>Clic en un nodo y luego en otro</b>: arista</li>
@@ -176,6 +182,7 @@
           <p class="message" id="editor-message" hidden></p>
 
           <button class="primary" id="editor-done">Listo</button>
+          <button class="danger" id="editor-delete">Eliminar este grafo</button>
         </div>
       </aside>
 

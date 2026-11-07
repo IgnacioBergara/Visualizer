@@ -19,23 +19,30 @@ La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencia
 
 ## Grafos aleatorios
 
-Con **🎲 Aleatorio** se genera un grafo eligiendo cantidad de nodos, densidad, rango de pesos, si es dirigido, si es un DAG y si tiene que ser conexo. La **semilla** hace que sea reproducible: la misma semilla con las mismas opciones da siempre el mismo grafo (los nodos se acomodan con un layout de fuerzas propio que también usa la semilla).
+Con **🎲 Azar** se genera un grafo eligiendo cantidad de nodos, densidad, rango de pesos, si es dirigido, si es un DAG y si tiene que ser conexo. La **semilla** hace que sea reproducible: la misma semilla con las mismas opciones da siempre el mismo grafo (los nodos se acomodan con un layout de fuerzas propio que también usa la semilla).
 
 Junto al grafo aparece **qué algoritmos se pueden correr**: los incompatibles (✗), los que se pueden correr con una advertencia (!), por ejemplo Kruskal sobre un grafo no conexo arma un bosque o Bellman-Ford va a encontrar un ciclo negativo, y los que no tienen problemas (✓).
 
 ## Editor de grafos
 
-Con **✎ Editar** se arma un grafo propio, partiendo de cero o de una copia del ejemplo que se está viendo:
+Se pueden guardar **hasta 3 grafos personalizados**, cada uno con su nombre:
+
+- **＋ Nuevo** crea un grafo vacío en un espacio libre.
+- **✎ Editar** edita el personalizado elegido; sobre un ejemplo o el aleatorio, crea una copia en un espacio libre (nunca pisa un grafo existente).
+- Desde el editor se le cambia el nombre o se lo elimina para liberar el espacio.
+
+En el editor:
 
 - Clic en el fondo: nuevo nodo. Clic en un nodo y luego en otro: arista.
 - Clic en una arista (o en su peso): cambiar el peso. Clic derecho: borrar. Arrastrar: mover.
 - Interruptor dirigido / no dirigido, **exportar e importar JSON** y guardado automático en el navegador.
 
-Formato del JSON:
+Formato del JSON (`name` es opcional):
 
 ```json
 {
   "version": 1,
+  "name": "Mi red",
   "directed": false,
   "nodes": [{ "label": "A", "x": 0, "y": 0 }, { "label": "B", "x": 150, "y": 0 }],
   "edges": [{ "from": 0, "to": 1, "weight": 4 }]

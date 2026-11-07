@@ -1,18 +1,26 @@
-// Grafo personalizado: operaciones de edición (todas devuelven un grafo nuevo),
-// formato JSON para importar/exportar y guardado en el navegador.
+// Grafos personalizados: operaciones de edición (todas devuelven un grafo
+// nuevo), formato JSON para importar/exportar y guardado en el navegador.
 import type { GraphEdge } from "../engine/types";
 import type { SampleGraph } from "./samples";
 
 export const CUSTOM_NAME = "Personalizado";
 export const MAX_NODES = 40;
+/** Cantidad de grafos personalizados que se pueden guardar a la vez. */
+export const MAX_CUSTOM_GRAPHS = 3;
+export const MAX_NAME_LENGTH = 30;
 const MAX_LABEL_LENGTH = 4;
-const STORAGE_KEY = "gv.customGraph";
+const STORAGE_KEY = "gv.customGraphs";
+/** Clave de cuando había un solo grafo personalizado; se migra al primer espacio. */
+const LEGACY_STORAGE_KEY = "gv.customGraph";
 
 type Point = { x: number; y: number };
 
-export function emptyGraph(directed = false): SampleGraph {
+/** Nombre por defecto del espacio `slot` (0, 1, 2 → "Personalizado 1", ...). */
+export const slotName = (slot: number) => `${CUSTOM_NAME} ${slot + 1}`;
+
+export function emptyGraph(directed = false, name = CUSTOM_NAME): SampleGraph {
   return {
-    name: CUSTOM_NAME,
+    name,
     graph: { nodeCount: 0, directed, edges: [] },
     labels: [],
     positions: [],
@@ -20,9 +28,9 @@ export function emptyGraph(directed = false): SampleGraph {
 }
 
 /** Copia editable de un grafo (p. ej. para editar a partir de un ejemplo). */
-export function copyAsCustom(source: SampleGraph): SampleGraph {
+export function copyAsCustom(source: SampleGraph, name = CUSTOM_NAME): SampleGraph {
   return {
-    name: CUSTOM_NAME,
+    name,
     graph: { ...source.graph, edges: source.graph.edges.map((e) => ({ ...e })) },
     labels: [...source.labels],
     positions: source.positions.map((p) => ({ ...p })),
@@ -120,6 +128,7 @@ export function toJson(g: SampleGraph): string {
   return JSON.stringify(
     {
       version: 1,
+      name: g.name,
       directed: g.graph.directed,
       nodes: g.labels.map((label, i) => ({ label, x: g.positions[i].x, y: g.positions[i].y })),
       edges: g.graph.edges,
@@ -148,7 +157,12 @@ export function fromJson(text: string): SampleGraph {
   if (!Array.isArray(edges)) throw new Error("Falta la lista \"edges\".");
   if (nodes.length > MAX_NODES) throw new Error(`El grafo tiene más de ${MAX_NODES} nodos.`);
 
-  let g = emptyGraph(directed);
+  // El nombre es opcional: los archivos exportados antes no lo traían.
+  const name =
+    typeof data.name === "string" && data.name.trim() !== ""
+      ? data.name.trim().slice(0, MAX_NAME_LENGTH)
+      : CUSTOM_NAME;
+  let g = emptyGraph(directed, name);
   nodes.forEach((node, i) => {
     if (!isRecord(node) || !isFiniteNumber(node.x) || !isFiniteNumber(node.y)) {
       throw new Error(`El nodo ${i} necesita "x" e "y" numéricos.`);
@@ -182,22 +196,49 @@ export function fromJson(text: string): SampleGraph {
 }
 
 // ---------------------------------------------------------------------------
-// Guardado en el navegador. Puede no estar disponible (modo privado, permisos):
-// en ese caso el editor funciona igual, solo que no recuerda el grafo.
+// Guardado en el navegador: MAX_CUSTOM_GRAPHS espacios, cada uno vacío (null)
+// o con un grafo. Puede no haber almacenamiento (modo privado, permisos): en
+// ese caso el editor funciona igual, solo que no recuerda los grafos.
 
-export function saveCustom(g: SampleGraph): void {
+export type CustomSlots = (SampleGraph | null)[];
+
+export function saveCustomSlots(slots: CustomSlots): void {
   try {
-    localStorage.setItem(STORAGE_KEY, toJson(g));
+    const data = slots.map((g) => (g ? JSON.parse(toJson(g)) : null));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     // sin almacenamiento disponible
   }
 }
 
-export function loadCustom(): SampleGraph | null {
+/** Lee los espacios guardados; un espacio dañado queda vacío en vez de romper todo. */
+export function loadCustomSlots(): CustomSlots {
+  const slots: CustomSlots = Array.from({ length: MAX_CUSTOM_GRAPHS }, () => null);
+  const read = (value: unknown, slot: number): SampleGraph | null => {
+    try {
+      const g = fromJson(JSON.stringify(value));
+      return g.name === CUSTOM_NAME ? { ...g, name: slotName(slot) } : g;
+    } catch {
+      return null;
+    }
+  };
   try {
     const text = localStorage.getItem(STORAGE_KEY);
-    return text ? fromJson(text) : null;
+    if (text) {
+      const data: unknown = JSON.parse(text);
+      if (Array.isArray(data)) {
+        data.slice(0, MAX_CUSTOM_GRAPHS).forEach((value, i) => {
+          slots[i] = value ? read(value, i) : null;
+        });
+      }
+      return slots;
+    }
+    // Migración: el grafo personalizado único de antes pasa al primer espacio.
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy) slots[0] = read(JSON.parse(legacy), 0);
   } catch {
-    return null;
+    // sin almacenamiento o datos ilegibles: se arranca sin grafos personalizados
   }
+  return slots;
 }
