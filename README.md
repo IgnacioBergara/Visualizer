@@ -15,7 +15,9 @@ Visualizador interactivo de algoritmos de grafos. Los algoritmos están escritos
 | **Prim** (O(V²)) | Árbol de cubrimiento mínimo creciendo desde un nodo | — |
 | **Kruskal** | Árbol de cubrimiento mínimo con unión de conjuntos | `MinHeap`, `MFSet` |
 
-La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Los grafos que no sirven para el algoritmo elegido aparecen deshabilitados con el motivo (por ejemplo, Dijkstra con pesos negativos).
+La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo.
+
+Primero se elige el grafo y la app indica **qué algoritmos se le pueden aplicar** (✓ sí, ! sí con una advertencia, ✗ no, con el motivo al pasar el mouse). Los incompatibles quedan deshabilitados; si se cambia a un grafo donde el algoritmo elegido no sirve, se pasa a otro algoritmo avisando por qué, sin tocar el grafo.
 
 ## Grafos aleatorios
 
@@ -29,7 +31,7 @@ Se pueden guardar **hasta 3 grafos personalizados**, cada uno con su nombre:
 
 - **＋ Nuevo** crea un grafo vacío en un espacio libre.
 - **✎ Editar** edita el personalizado elegido; sobre un ejemplo o el aleatorio, crea una copia en un espacio libre (nunca pisa un grafo existente).
-- Desde el editor se le cambia el nombre o se lo elimina para liberar el espacio.
+- **🗑** borra el personalizado elegido para liberar su espacio (también se puede desde el editor, donde además se le cambia el nombre).
 
 En el editor:
 
