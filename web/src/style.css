@@ -17,6 +17,7 @@
   --active: #d9480f;
   --path: #c2255c;
   --cycle: #e03131;
+  --warning-text: #9a6700;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,6 +39,7 @@
     --active: #ff8a4c;
     --path: #f06595;
     --cycle: #ff6b6b;
+    --warning-text: #e3b341;
   }
 }
 
@@ -140,11 +142,64 @@ h2 {
   font-size: 1rem;
 }
 
+/* Tres botones fijos y, si el grafo es personalizado, el de borrar. */
 .graph-tools {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr) auto;
   gap: 6px;
   margin-top: -6px;
+}
+
+.graph-tools button[hidden] {
+  display: none;
+}
+
+.availability {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.chips button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.chips .icon {
+  width: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.chips .ok .icon { color: var(--finished); }
+.chips .warning .icon { color: var(--frontier); }
+.chips .blocked .icon { color: var(--cycle); }
+
+/* El disponible elegido se marca; los no disponibles quedan atenuados. */
+.chips button.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.chips button.blocked {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.hint.warning {
+  color: var(--warning-text);
 }
 
 .graph-tools button {

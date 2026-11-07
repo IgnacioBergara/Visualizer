@@ -23,9 +23,14 @@
             <button id="edit-graph" title="Editar este grafo (o una copia, si es un ejemplo)">✎ Editar</button>
             <button id="new-graph" title="Crear un grafo vacío">＋ Nuevo</button>
             <button id="random-graph" title="Generar un grafo aleatorio">🎲 Azar</button>
+            <button id="delete-graph" class="danger" title="Borrar este grafo personalizado" hidden>🗑</button>
           </div>
           <p class="hint" id="slots-hint" hidden></p>
-          <p class="hint" id="sample-hint" hidden></p>
+
+          <section class="availability">
+            <span>Algoritmos para este grafo</span>
+            <div class="chips" id="algorithm-chips"></div>
+          </section>
 
           <label class="field">
             <span>Algoritmo</span>
@@ -40,6 +45,7 @@
               <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
             </select>
           </label>
+          <p class="hint" id="algorithm-hint" hidden></p>
 
           <div class="row">
             <label class="field" id="source-field">
