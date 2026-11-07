@@ -1,5 +1,6 @@
 import "./style.css";
 import { GraphEditor } from "./editor/GraphEditor";
+import { RandomGraphPanel } from "./editor/RandomGraphPanel";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
 import { incompatibility } from "./graph/compatibility";
@@ -20,6 +21,10 @@ const ui = {
   editorPanel: $<HTMLElement>("editor-panel"),
   editGraph: $<HTMLButtonElement>("edit-graph"),
   editorDone: $<HTMLButtonElement>("editor-done"),
+  randomGraph: $<HTMLButtonElement>("random-graph"),
+  randomPanel: $<HTMLElement>("random-panel"),
+  randomCancel: $<HTMLButtonElement>("random-cancel"),
+  randomUse: $<HTMLButtonElement>("random-use"),
   sample: $<HTMLSelectElement>("sample"),
   sampleHint: $<HTMLParagraphElement>("sample-hint"),
   algorithm: $<HTMLSelectElement>("algorithm"),
@@ -56,21 +61,44 @@ const editorUi = {
   message: $<HTMLParagraphElement>("editor-message"),
 };
 
-/** Los ejemplos fijos más el grafo personalizado, si existe. */
-type GraphId = SampleId | "custom";
+const randomUi = {
+  nodes: $<HTMLInputElement>("random-nodes"),
+  density: $<HTMLInputElement>("random-density"),
+  minWeight: $<HTMLInputElement>("random-min"),
+  maxWeight: $<HTMLInputElement>("random-max"),
+  directed: $<HTMLInputElement>("random-directed"),
+  acyclic: $<HTMLInputElement>("random-acyclic"),
+  connected: $<HTMLInputElement>("random-connected"),
+  seed: $<HTMLInputElement>("random-seed"),
+  reroll: $<HTMLButtonElement>("random-reroll"),
+  summary: $<HTMLParagraphElement>("random-summary"),
+  report: $<HTMLUListElement>("random-report"),
+};
+
+/** Los ejemplos fijos más el grafo personalizado y el aleatorio, si existen. */
+type GraphId = SampleId | "custom" | "random";
 
 const sampleIds = Object.keys(samples) as SampleId[];
 let customGraph: SampleGraph | null = loadCustom();
+let randomGraph: SampleGraph | null = null;
 
-const graphFor = (id: GraphId): SampleGraph =>
-  id === "custom" ? (customGraph ?? emptyGraph()) : samples[id];
-const graphIds = (): GraphId[] => (customGraph ? [...sampleIds, "custom"] : sampleIds);
+function graphFor(id: GraphId): SampleGraph {
+  if (id === "custom") return customGraph ?? emptyGraph();
+  if (id === "random") return randomGraph ?? emptyGraph();
+  return samples[id];
+}
+const graphIds = (): GraphId[] => [
+  ...sampleIds,
+  ...(customGraph ? (["custom"] as const) : []),
+  ...(randomGraph ? (["random"] as const) : []),
+];
 
 // Si hay un grafo personalizado guardado, se arranca mostrándolo.
 let currentId: GraphId = customGraph ? "custom" : "weighted";
 let sample: SampleGraph = graphFor(currentId);
 let view: GraphView | null = new GraphView($("graph"), sample);
 let editor: GraphEditor | null = null;
+let generator: RandomGraphPanel | null = null;
 let steps: Step[] = [];
 
 function chip(text: string): HTMLLIElement {
@@ -231,6 +259,31 @@ function finishEditing(engine: EngineModule): void {
   recompute(engine);
 }
 
+// El generador ocupa el lienzo mientras está abierto; "Cancelar" vuelve al grafo anterior.
+function startRandom(): void {
+  player.pause();
+  view?.destroy();
+  view = null;
+  generator = new RandomGraphPanel($("graph"), randomUi);
+  ui.runPanel.hidden = true;
+  ui.randomPanel.hidden = false;
+}
+
+function closeRandom(engine: EngineModule, use: boolean): void {
+  if (!generator) return;
+  const generated = generator.finish();
+  generator = null;
+  ui.randomPanel.hidden = true;
+  ui.runPanel.hidden = false;
+  ui.sampleHint.hidden = true;
+
+  if (use) randomGraph = generated;
+  selectSample(use ? "random" : currentId);
+  updateSampleOptions();
+  ensureCompatibleSample();
+  recompute(engine);
+}
+
 fillNodeSelects();
 updateSampleOptions();
 
@@ -251,6 +304,9 @@ async function main(): Promise<void> {
   }
   ui.editGraph.addEventListener("click", startEditing);
   ui.editorDone.addEventListener("click", () => finishEditing(engine));
+  ui.randomGraph.addEventListener("click", startRandom);
+  ui.randomUse.addEventListener("click", () => closeRandom(engine, true));
+  ui.randomCancel.addEventListener("click", () => closeRandom(engine, false));
   ui.play.addEventListener("click", () => player.toggle());
   ui.forward.addEventListener("click", () => player.stepForward());
   ui.back.addEventListener("click", () => player.stepBack());
@@ -260,8 +316,10 @@ async function main(): Promise<void> {
   ui.speed.addEventListener("input", () => player.setDelay(1600 - Number(ui.speed.value)));
 
   document.addEventListener("keydown", (e) => {
-    // Sin atajos mientras se edita o se escribe en un campo.
-    if (editor || e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+    // Sin atajos mientras se edita, se genera o se escribe en un campo.
+    if (editor || generator || e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) {
+      return;
+    }
     if (e.key === "ArrowRight") player.stepForward();
     else if (e.key === "ArrowLeft") player.stepBack();
     else if (e.key === " ") {
