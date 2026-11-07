@@ -2,12 +2,13 @@ import type cytoscape from "cytoscape";
 import {
   addNode,
   emptyGraph,
+  CUSTOM_NAME,
   fromJson,
+  MAX_NAME_LENGTH,
   MAX_NODES,
   moveNode,
   removeEdge,
   removeNode,
-  saveCustom,
   setDirected,
   setEdge,
   toJson,
@@ -18,6 +19,7 @@ import { GraphView, type Viewport } from "../render/GraphView";
 
 /** Controles del panel lateral que maneja el editor. */
 export interface EditorElements {
+  name: HTMLInputElement;
   directed: HTMLInputElement;
   weight: HTMLInputElement;
   edgePanel: HTMLElement;
@@ -38,7 +40,8 @@ const nodeIndex = (element: { id(): string }) => Number(element.id().slice(1));
  * Edición sobre el lienzo:
  *   clic en el fondo → nodo nuevo · clic en dos nodos → arista
  *   clic en una arista → editar su peso · clic derecho → borrar · arrastrar → mover
- * Cada cambio produce un grafo nuevo y se redibuja conservando la cámara.
+ * Cada cambio produce un grafo nuevo, se redibuja conservando la cámara y se
+ * avisa con `onChange` (quien abrió el editor decide dónde guardarlo).
  */
 export class GraphEditor {
   private graph: SampleGraph;
@@ -52,9 +55,12 @@ export class GraphEditor {
     private readonly container: HTMLElement,
     start: SampleGraph,
     private readonly ui: EditorElements,
+    private readonly onChange: (graph: SampleGraph) => void,
     viewport?: Viewport,
   ) {
     this.graph = start;
+    ui.name.maxLength = MAX_NAME_LENGTH;
+    ui.name.value = start.name;
     ui.directed.checked = start.graph.directed;
     this.showMessage("");
     this.bindPanel();
@@ -69,10 +75,10 @@ export class GraphEditor {
     return this.graph;
   }
 
-  // Cada cambio se guarda enseguida, así una recarga no pierde lo editado.
+  // Cada cambio se avisa enseguida, así una recarga no pierde lo editado.
   private update(next: SampleGraph, keepViewport = true): void {
     this.graph = next;
-    saveCustom(this.graph);
+    this.onChange(this.graph);
     this.redraw(keepViewport ? this.view?.viewport : undefined);
   }
 
@@ -106,7 +112,7 @@ export class GraphEditor {
     // Mover un nodo no cambia la estructura: se guarda la posición sin redibujar.
     cy.on("dragfree", "node", (evt) => {
       this.graph = moveNode(this.graph, nodeIndex(evt.target), evt.target.position());
-      saveCustom(this.graph);
+      this.onChange(this.graph);
     });
   }
 
@@ -166,6 +172,15 @@ export class GraphEditor {
     const { signal } = this.listeners;
     const ui = this.ui;
 
+    // El nombre no cambia el dibujo: se guarda sin redibujar.
+    ui.name.addEventListener(
+      "input",
+      () => {
+        this.graph = { ...this.graph, name: ui.name.value.trim() || CUSTOM_NAME };
+        this.onChange(this.graph);
+      },
+      { signal },
+    );
     ui.directed.addEventListener(
       "change",
       () => {
@@ -194,7 +209,7 @@ export class GraphEditor {
         if (this.graph.graph.nodeCount > 0 && !confirm("¿Borrar todos los nodos y aristas?")) return;
         this.pending = null;
         this.selected = null;
-        this.update(emptyGraph(this.graph.graph.directed));
+        this.update(emptyGraph(this.graph.graph.directed, this.graph.name));
       },
       { signal },
     );
@@ -234,9 +249,12 @@ export class GraphEditor {
     if (!file) return;
     try {
       const imported = fromJson(await file.text());
+      // Un archivo sin nombre propio conserva el nombre actual del grafo.
+      const name = imported.name === CUSTOM_NAME ? this.graph.name : imported.name;
+      this.ui.name.value = name;
       this.pending = null;
       this.selected = null;
-      this.update(imported, false); // encaja la cámara al grafo importado
+      this.update({ ...imported, name }, false); // encaja la cámara al grafo importado
       this.showMessage(`Se importó «${file.name}».`);
     } catch (err) {
       this.showMessage(err instanceof Error ? err.message : "No se pudo importar el archivo.", true);

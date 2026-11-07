@@ -142,9 +142,31 @@ h2 {
 
 .graph-tools {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-top: -6px;
+}
+
+.graph-tools button {
+  padding: 6px 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+input[type="text"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+button.danger {
+  color: var(--cycle);
+  border-color: color-mix(in srgb, var(--cycle) 45%, var(--border));
 }
 
 .seed {

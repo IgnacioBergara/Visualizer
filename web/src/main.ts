@@ -4,11 +4,18 @@ import { RandomGraphPanel } from "./editor/RandomGraphPanel";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
 import { incompatibility } from "./graph/compatibility";
-import { copyAsCustom, emptyGraph, loadCustom, saveCustom } from "./graph/customGraph";
+import {
+  copyAsCustom,
+  emptyGraph,
+  loadCustomSlots,
+  MAX_CUSTOM_GRAPHS,
+  saveCustomSlots,
+  slotName,
+} from "./graph/customGraph";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
 import { cellKey, deriveState, describeStep, type VisualState } from "./player/state";
-import { GraphView } from "./render/GraphView";
+import { GraphView, type Viewport } from "./render/GraphView";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -20,7 +27,10 @@ const ui = {
   runPanel: $<HTMLElement>("run-panel"),
   editorPanel: $<HTMLElement>("editor-panel"),
   editGraph: $<HTMLButtonElement>("edit-graph"),
+  newGraph: $<HTMLButtonElement>("new-graph"),
+  slotsHint: $<HTMLParagraphElement>("slots-hint"),
   editorDone: $<HTMLButtonElement>("editor-done"),
+  editorDelete: $<HTMLButtonElement>("editor-delete"),
   randomGraph: $<HTMLButtonElement>("random-graph"),
   randomPanel: $<HTMLElement>("random-panel"),
   randomCancel: $<HTMLButtonElement>("random-cancel"),
@@ -48,6 +58,7 @@ const ui = {
 };
 
 const editorUi = {
+  name: $<HTMLInputElement>("editor-name"),
   directed: $<HTMLInputElement>("editor-directed"),
   weight: $<HTMLInputElement>("editor-weight"),
   edgePanel: $<HTMLElement>("editor-edge"),
@@ -75,29 +86,40 @@ const randomUi = {
   report: $<HTMLUListElement>("random-report"),
 };
 
-/** Los ejemplos fijos más el grafo personalizado y el aleatorio, si existen. */
-type GraphId = SampleId | "custom" | "random";
+/** Los ejemplos fijos, los grafos personalizados (custom-0, custom-1, ...) y el aleatorio. */
+type CustomId = `custom-${number}`;
+type GraphId = SampleId | CustomId | "random";
+
+const customId = (slot: number): CustomId => `custom-${slot}`;
+const slotOf = (id: GraphId): number | null => (id.startsWith("custom-") ? Number(id.slice(7)) : null);
 
 const sampleIds = Object.keys(samples) as SampleId[];
-let customGraph: SampleGraph | null = loadCustom();
+const customSlots = loadCustomSlots();
 let randomGraph: SampleGraph | null = null;
 
+/** Primer espacio personalizado libre, o -1 si están todos ocupados. */
+const freeSlot = () => customSlots.findIndex((g) => g === null);
+
 function graphFor(id: GraphId): SampleGraph {
-  if (id === "custom") return customGraph ?? emptyGraph();
+  const slot = slotOf(id);
+  if (slot !== null) return customSlots[slot] ?? emptyGraph();
   if (id === "random") return randomGraph ?? emptyGraph();
-  return samples[id];
+  return samples[id as SampleId];
 }
 const graphIds = (): GraphId[] => [
   ...sampleIds,
-  ...(customGraph ? (["custom"] as const) : []),
+  ...customSlots.flatMap((g, slot) => (g ? [customId(slot)] : [])),
   ...(randomGraph ? (["random"] as const) : []),
 ];
 
-// Si hay un grafo personalizado guardado, se arranca mostrándolo.
-let currentId: GraphId = customGraph ? "custom" : "weighted";
+// Si hay grafos personalizados guardados, se arranca mostrando el primero.
+const firstSaved = customSlots.findIndex((g) => g !== null);
+let currentId: GraphId = firstSaved >= 0 ? customId(firstSaved) : "weighted";
 let sample: SampleGraph = graphFor(currentId);
 let view: GraphView | null = new GraphView($("graph"), sample);
 let editor: GraphEditor | null = null;
+/** Espacio personalizado que se está editando. */
+let editingSlot: number | null = null;
 let generator: RandomGraphPanel | null = null;
 let steps: Step[] = [];
 
@@ -187,6 +209,16 @@ function selectSample(id: GraphId): void {
   view?.destroy();
   view = new GraphView($("graph"), sample);
   fillNodeSelects();
+  updateGraphTools();
+}
+
+// "Nuevo" necesita un espacio libre; "Editar" también, salvo que ya sea un personalizado.
+function updateGraphTools(): void {
+  const full = freeSlot() === -1;
+  ui.newGraph.disabled = full;
+  ui.editGraph.disabled = full && slotOf(currentId) === null;
+  ui.slotsHint.hidden = !full;
+  ui.slotsHint.textContent = `Ya tenés ${MAX_CUSTOM_GRAPHS} grafos personalizados: para crear otro, eliminá uno desde «✎ Editar».`;
 }
 
 // Opciones del selector de grafo; las incompatibles con el algoritmo quedan deshabilitadas.
@@ -228,35 +260,72 @@ function recompute(engine: EngineModule): void {
   player.load(steps);
 }
 
-// El editor parte del grafo que se está viendo: el personalizado o una copia del ejemplo.
-function startEditing(): void {
-  const replacesCustom = currentId !== "custom" && (customGraph?.graph.nodeCount ?? 0) > 0;
-  if (replacesCustom && !confirm("Esto reemplaza tu grafo personalizado por una copia de este ejemplo. ¿Seguir?")) {
-    return;
-  }
+// Abre el editor sobre un espacio personalizado. El espacio queda reservado
+// enseguida y cada cambio se guarda, así nada se pierde al recargar.
+function openEditor(slot: number, start: SampleGraph, viewport?: Viewport): void {
   player.pause();
-  const viewport = view?.viewport;
   view?.destroy();
   view = null;
-  const start = currentId === "custom" && customGraph ? customGraph : copyAsCustom(sample);
-  editor = new GraphEditor($("graph"), start, editorUi, viewport);
+  editingSlot = slot;
+  customSlots[slot] = start;
+  saveCustomSlots(customSlots);
+  const onChange = (g: SampleGraph) => {
+    customSlots[slot] = g;
+    saveCustomSlots(customSlots);
+  };
+  editor = new GraphEditor($("graph"), start, editorUi, onChange, viewport);
   ui.runPanel.hidden = true;
   ui.editorPanel.hidden = false;
 }
 
-function finishEditing(engine: EngineModule): void {
-  if (!editor) return;
-  customGraph = editor.finish();
+// Un personalizado se edita en su lugar; un ejemplo o el aleatorio, como copia en un espacio libre.
+function startEditing(): void {
+  const viewport = view?.viewport;
+  const slot = slotOf(currentId);
+  if (slot !== null) {
+    openEditor(slot, customSlots[slot] ?? emptyGraph(false, slotName(slot)), viewport);
+    return;
+  }
+  const free = freeSlot();
+  if (free !== -1) openEditor(free, copyAsCustom(sample, slotName(free)), viewport);
+}
+
+// Grafo vacío en un espacio libre, con la cámara centrada en el origen.
+function startNewGraph(): void {
+  const free = freeSlot();
+  if (free === -1) return;
+  const { width, height } = $("graph").getBoundingClientRect();
+  openEditor(free, emptyGraph(false, slotName(free)), { zoom: 1, pan: { x: width / 2, y: height / 2 } });
+}
+
+function closeEditor(engine: EngineModule, show: GraphId): void {
   editor = null;
-  saveCustom(customGraph);
+  editingSlot = null;
   ui.editorPanel.hidden = true;
   ui.runPanel.hidden = false;
   ui.sampleHint.hidden = true;
-
-  selectSample("custom");
+  selectSample(show);
   updateSampleOptions();
   ensureCompatibleSample();
   recompute(engine);
+}
+
+function finishEditing(engine: EngineModule): void {
+  if (!editor || editingSlot === null) return;
+  const slot = editingSlot;
+  customSlots[slot] = editor.finish();
+  saveCustomSlots(customSlots);
+  closeEditor(engine, customId(slot));
+}
+
+function deleteEditingGraph(engine: EngineModule): void {
+  if (!editor || editingSlot === null) return;
+  const name = customSlots[editingSlot]?.name ?? slotName(editingSlot);
+  if (!confirm(`¿Eliminar «${name}»? No se puede deshacer.`)) return;
+  editor.finish();
+  customSlots[editingSlot] = null;
+  saveCustomSlots(customSlots);
+  closeEditor(engine, "weighted");
 }
 
 // El generador ocupa el lienzo mientras está abierto; "Cancelar" vuelve al grafo anterior.
@@ -286,6 +355,7 @@ function closeRandom(engine: EngineModule, use: boolean): void {
 
 fillNodeSelects();
 updateSampleOptions();
+updateGraphTools();
 
 async function main(): Promise<void> {
   const engine = await loadEngine();
@@ -303,7 +373,9 @@ async function main(): Promise<void> {
     select.addEventListener("change", () => recompute(engine));
   }
   ui.editGraph.addEventListener("click", startEditing);
+  ui.newGraph.addEventListener("click", startNewGraph);
   ui.editorDone.addEventListener("click", () => finishEditing(engine));
+  ui.editorDelete.addEventListener("click", () => deleteEditingGraph(engine));
   ui.randomGraph.addEventListener("click", startRandom);
   ui.randomUse.addEventListener("click", () => closeRandom(engine, true));
   ui.randomCancel.addEventListener("click", () => closeRandom(engine, false));
