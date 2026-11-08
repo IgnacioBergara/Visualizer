@@ -15,14 +15,22 @@
 
         <!-- Modo reproducción: elegir grafo y algoritmo y ver los pasos -->
         <div class="stack" id="run-panel">
-          <div class="graph-picker">
-            <label class="field">
-              <span>Grafo</span>
-              <select id="sample"></select>
-            </label>
-            <button id="edit-graph" title="Crear o editar un grafo propio">✎ Editar</button>
+          <label class="field">
+            <span>Grafo</span>
+            <select id="sample"></select>
+          </label>
+          <div class="graph-tools">
+            <button id="edit-graph" title="Editar este grafo (o una copia, si es un ejemplo)">✎ Editar</button>
+            <button id="new-graph" title="Crear un grafo vacío">＋ Nuevo</button>
+            <button id="random-graph" title="Generar un grafo aleatorio">🎲 Azar</button>
+            <button id="delete-graph" class="danger" title="Borrar este grafo personalizado" hidden>🗑</button>
           </div>
-          <p class="hint" id="sample-hint" hidden></p>
+          <p class="hint" id="slots-hint" hidden></p>
+
+          <section class="availability">
+            <span>Algoritmos para este grafo</span>
+            <div class="chips" id="algorithm-chips"></div>
+          </section>
 
           <label class="field">
             <span>Algoritmo</span>
@@ -37,6 +45,7 @@
               <option value="kruskal">Kruskal (árbol de cubrimiento mínimo)</option>
             </select>
           </label>
+          <p class="hint" id="algorithm-hint" hidden></p>
 
           <div class="row">
             <label class="field" id="source-field">
@@ -85,9 +94,63 @@
           </ul>
         </div>
 
+        <!-- Generador: grafo aleatorio y qué algoritmos se le pueden aplicar -->
+        <div class="stack" id="random-panel" hidden>
+          <h2>Grafo aleatorio</h2>
+
+          <div class="row">
+            <label class="field">
+              <span>Nodos</span>
+              <input type="number" id="random-nodes" min="2" max="40" value="8" />
+            </label>
+            <label class="field">
+              <span>Densidad (%)</span>
+              <input type="number" id="random-density" min="0" max="100" step="5" value="30" />
+            </label>
+          </div>
+
+          <div class="row">
+            <label class="field">
+              <span>Peso mínimo</span>
+              <input type="number" id="random-min" value="1" />
+            </label>
+            <label class="field">
+              <span>Peso máximo</span>
+              <input type="number" id="random-max" value="9" />
+            </label>
+          </div>
+
+          <label class="check"><input type="checkbox" id="random-directed" /> Dirigido</label>
+          <label class="check"><input type="checkbox" id="random-acyclic" disabled /> Sin ciclos (DAG)</label>
+          <label class="check"><input type="checkbox" id="random-connected" checked /> Conexo</label>
+
+          <div class="seed">
+            <label class="field">
+              <span>Semilla</span>
+              <input type="number" id="random-seed" min="0" />
+            </label>
+            <button id="random-reroll" title="Generar con otra semilla">🎲 Otro</button>
+          </div>
+          <p class="counter" id="random-summary"></p>
+
+          <section class="report">
+            <span>¿Qué algoritmos puedo correr?</span>
+            <ul id="random-report"></ul>
+          </section>
+
+          <div class="editor-actions">
+            <button id="random-cancel">Cancelar</button>
+            <button class="primary" id="random-use">Usar este grafo</button>
+          </div>
+        </div>
+
         <!-- Modo edición: armar el grafo personalizado -->
         <div class="stack" id="editor-panel" hidden>
           <h2>Editar grafo</h2>
+          <label class="field">
+            <span>Nombre</span>
+            <input type="text" id="editor-name" />
+          </label>
           <ul class="help">
             <li><b>Clic en el fondo</b>: nuevo nodo</li>
             <li><b>Clic en un nodo y luego en otro</b>: arista</li>
@@ -125,6 +188,7 @@
           <p class="message" id="editor-message" hidden></p>
 
           <button class="primary" id="editor-done">Listo</button>
+          <button class="danger" id="editor-delete">Eliminar este grafo</button>
         </div>
       </aside>
 

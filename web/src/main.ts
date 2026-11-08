@@ -1,13 +1,21 @@
 import "./style.css";
 import { GraphEditor } from "./editor/GraphEditor";
+import { RandomGraphPanel } from "./editor/RandomGraphPanel";
 import { loadEngine, runAlgorithm, type EngineModule } from "./engine/engine";
 import type { AlgorithmId, Step } from "./engine/types";
-import { incompatibility } from "./graph/compatibility";
-import { copyAsCustom, emptyGraph, loadCustom, saveCustom } from "./graph/customGraph";
+import { ALGORITHM_NAMES, checkAlgorithms, type AlgorithmCheck, type Verdict } from "./graph/compatibility";
+import {
+  copyAsCustom,
+  emptyGraph,
+  loadCustomSlots,
+  MAX_CUSTOM_GRAPHS,
+  saveCustomSlots,
+  slotName,
+} from "./graph/customGraph";
 import { samples, type SampleGraph, type SampleId } from "./graph/samples";
 import { Player } from "./player/Player";
 import { cellKey, deriveState, describeStep, type VisualState } from "./player/state";
-import { GraphView } from "./render/GraphView";
+import { GraphView, type Viewport } from "./render/GraphView";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -19,9 +27,18 @@ const ui = {
   runPanel: $<HTMLElement>("run-panel"),
   editorPanel: $<HTMLElement>("editor-panel"),
   editGraph: $<HTMLButtonElement>("edit-graph"),
+  newGraph: $<HTMLButtonElement>("new-graph"),
+  deleteGraph: $<HTMLButtonElement>("delete-graph"),
+  slotsHint: $<HTMLParagraphElement>("slots-hint"),
+  algorithmChips: $<HTMLDivElement>("algorithm-chips"),
+  algorithmHint: $<HTMLParagraphElement>("algorithm-hint"),
   editorDone: $<HTMLButtonElement>("editor-done"),
+  editorDelete: $<HTMLButtonElement>("editor-delete"),
+  randomGraph: $<HTMLButtonElement>("random-graph"),
+  randomPanel: $<HTMLElement>("random-panel"),
+  randomCancel: $<HTMLButtonElement>("random-cancel"),
+  randomUse: $<HTMLButtonElement>("random-use"),
   sample: $<HTMLSelectElement>("sample"),
-  sampleHint: $<HTMLParagraphElement>("sample-hint"),
   algorithm: $<HTMLSelectElement>("algorithm"),
   source: $<HTMLSelectElement>("source"),
   sourceField: $<HTMLLabelElement>("source-field"),
@@ -43,6 +60,7 @@ const ui = {
 };
 
 const editorUi = {
+  name: $<HTMLInputElement>("editor-name"),
   directed: $<HTMLInputElement>("editor-directed"),
   weight: $<HTMLInputElement>("editor-weight"),
   edgePanel: $<HTMLElement>("editor-edge"),
@@ -56,21 +74,55 @@ const editorUi = {
   message: $<HTMLParagraphElement>("editor-message"),
 };
 
-/** Los ejemplos fijos más el grafo personalizado, si existe. */
-type GraphId = SampleId | "custom";
+const randomUi = {
+  nodes: $<HTMLInputElement>("random-nodes"),
+  density: $<HTMLInputElement>("random-density"),
+  minWeight: $<HTMLInputElement>("random-min"),
+  maxWeight: $<HTMLInputElement>("random-max"),
+  directed: $<HTMLInputElement>("random-directed"),
+  acyclic: $<HTMLInputElement>("random-acyclic"),
+  connected: $<HTMLInputElement>("random-connected"),
+  seed: $<HTMLInputElement>("random-seed"),
+  reroll: $<HTMLButtonElement>("random-reroll"),
+  summary: $<HTMLParagraphElement>("random-summary"),
+  report: $<HTMLUListElement>("random-report"),
+};
+
+/** Los ejemplos fijos, los grafos personalizados (custom-0, custom-1, ...) y el aleatorio. */
+type CustomId = `custom-${number}`;
+type GraphId = SampleId | CustomId | "random";
+
+const customId = (slot: number): CustomId => `custom-${slot}`;
+const slotOf = (id: GraphId): number | null => (id.startsWith("custom-") ? Number(id.slice(7)) : null);
 
 const sampleIds = Object.keys(samples) as SampleId[];
-let customGraph: SampleGraph | null = loadCustom();
+const customSlots = loadCustomSlots();
+let randomGraph: SampleGraph | null = null;
 
-const graphFor = (id: GraphId): SampleGraph =>
-  id === "custom" ? (customGraph ?? emptyGraph()) : samples[id];
-const graphIds = (): GraphId[] => (customGraph ? [...sampleIds, "custom"] : sampleIds);
+/** Primer espacio personalizado libre, o -1 si están todos ocupados. */
+const freeSlot = () => customSlots.findIndex((g) => g === null);
 
-// Si hay un grafo personalizado guardado, se arranca mostrándolo.
-let currentId: GraphId = customGraph ? "custom" : "weighted";
+function graphFor(id: GraphId): SampleGraph {
+  const slot = slotOf(id);
+  if (slot !== null) return customSlots[slot] ?? emptyGraph();
+  if (id === "random") return randomGraph ?? emptyGraph();
+  return samples[id as SampleId];
+}
+const graphIds = (): GraphId[] => [
+  ...sampleIds,
+  ...customSlots.flatMap((g, slot) => (g ? [customId(slot)] : [])),
+  ...(randomGraph ? (["random"] as const) : []),
+];
+
+// Si hay grafos personalizados guardados, se arranca mostrando el primero.
+const firstSaved = customSlots.findIndex((g) => g !== null);
+let currentId: GraphId = firstSaved >= 0 ? customId(firstSaved) : "weighted";
 let sample: SampleGraph = graphFor(currentId);
 let view: GraphView | null = new GraphView($("graph"), sample);
 let editor: GraphEditor | null = null;
+/** Espacio personalizado que se está editando. */
+let editingSlot: number | null = null;
+let generator: RandomGraphPanel | null = null;
 let steps: Step[] = [];
 
 function chip(text: string): HTMLLIElement {
@@ -159,34 +211,86 @@ function selectSample(id: GraphId): void {
   view?.destroy();
   view = new GraphView($("graph"), sample);
   fillNodeSelects();
+  updateGraphTools();
 }
 
-// Opciones del selector de grafo; las incompatibles con el algoritmo quedan deshabilitadas.
+// "Nuevo" necesita un espacio libre; "Editar" también, salvo que ya sea un
+// personalizado. "Borrar" solo aparece sobre un personalizado.
+function updateGraphTools(): void {
+  const full = freeSlot() === -1;
+  const isCustom = slotOf(currentId) !== null;
+  ui.newGraph.disabled = full;
+  ui.editGraph.disabled = full && !isCustom;
+  ui.deleteGraph.hidden = !isCustom;
+  ui.slotsHint.hidden = !full;
+  ui.slotsHint.textContent = `Ya tenés ${MAX_CUSTOM_GRAPHS} grafos personalizados: para crear otro, borrá uno con 🗑.`;
+}
+
+// Todos los grafos se pueden elegir: lo que se filtra son los algoritmos.
 function updateSampleOptions(): void {
-  const algorithm = ui.algorithm.value as AlgorithmId;
-  ui.sample.replaceChildren(
-    ...graphIds().map((id) => {
-      const g = graphFor(id);
-      const reason = incompatibility(algorithm, g.graph);
-      const option = new Option(reason ? `${g.name} — ${reason}` : g.name, id);
-      option.disabled = reason !== null;
-      return option;
-    }),
-  );
+  ui.sample.replaceChildren(...graphIds().map((id) => new Option(graphFor(id).name, id)));
   ui.sample.value = currentId;
 }
 
-// Si el grafo elegido no sirve para el algoritmo, pasa al primero que sí sirva.
-function ensureCompatibleSample(): void {
-  const algorithm = ui.algorithm.value as AlgorithmId;
-  const reason = incompatibility(algorithm, sample.graph);
-  ui.sampleHint.hidden = reason === null;
-  if (reason === null) return;
+const VERDICT_ICONS: Record<Verdict, string> = { ok: "✓", warning: "!", blocked: "✗" };
 
-  const replacement = graphIds().find((id) => incompatibility(algorithm, graphFor(id).graph) === null);
-  if (!replacement) return;
-  selectSample(replacement);
-  ui.sampleHint.textContent = `Se cambió a «${graphFor(replacement).name}»: ${reason}.`;
+// Un botón por algoritmo con su estado para el grafo elegido; los disponibles se pueden clicar.
+function renderAlgorithmChips(checks: readonly AlgorithmCheck[]): void {
+  ui.algorithmChips.replaceChildren(
+    ...checks.map((check) => {
+      const chipButton = document.createElement("button");
+      chipButton.className = check.verdict;
+      chipButton.classList.toggle("active", check.algorithm === ui.algorithm.value);
+      chipButton.disabled = check.verdict === "blocked";
+      chipButton.title = check.message;
+      chipButton.dataset.algorithm = check.algorithm;
+      const icon = document.createElement("span");
+      icon.className = "icon";
+      icon.textContent = VERDICT_ICONS[check.verdict];
+      chipButton.append(icon, ALGORITHM_NAMES[check.algorithm]);
+      return chipButton;
+    }),
+  );
+}
+
+/**
+ * Ajusta los algoritmos al grafo elegido: deshabilita los incompatibles y, si
+ * el elegido quedó entre ellos, pasa a uno disponible avisando por qué. Si el
+ * elegido se puede correr con una advertencia, la muestra.
+ */
+function refreshAlgorithms(): void {
+  const checks = checkAlgorithms(sample.graph);
+  const byAlgorithm = new Map(checks.map((c) => [c.algorithm, c]));
+  for (const option of ui.algorithm.options) {
+    const check = byAlgorithm.get(option.value as AlgorithmId)!;
+    option.disabled = check.verdict === "blocked";
+    option.title = check.message;
+  }
+
+  let notice: string | null = null;
+  const chosen = byAlgorithm.get(ui.algorithm.value as AlgorithmId)!;
+  if (chosen.verdict === "blocked") {
+    // BFS siempre se puede correr, así que siempre hay reemplazo.
+    const replacement = checks.find((c) => c.verdict !== "blocked")!;
+    ui.algorithm.value = replacement.algorithm;
+    notice = `Se cambió a ${ALGORITHM_NAMES[replacement.algorithm]}: ${chosen.message}`;
+  }
+
+  const current = byAlgorithm.get(ui.algorithm.value as AlgorithmId)!;
+  const warning = current.verdict === "warning" ? current.message : null;
+  ui.algorithmHint.textContent = notice ?? warning ?? "";
+  ui.algorithmHint.hidden = notice === null && warning === null;
+  ui.algorithmHint.classList.toggle("warning", notice === null && warning !== null);
+  renderAlgorithmChips(checks);
+}
+
+// Borra un grafo personalizado después de confirmarlo. Devuelve si se borró.
+function removeCustomGraph(slot: number): boolean {
+  const name = customSlots[slot]?.name ?? slotName(slot);
+  if (!confirm(`¿Borrar «${name}»? No se puede deshacer.`)) return false;
+  customSlots[slot] = null;
+  saveCustomSlots(customSlots);
+  return true;
 }
 
 function recompute(engine: EngineModule): void {
@@ -200,57 +304,136 @@ function recompute(engine: EngineModule): void {
   player.load(steps);
 }
 
-// El editor parte del grafo que se está viendo: el personalizado o una copia del ejemplo.
-function startEditing(): void {
-  const replacesCustom = currentId !== "custom" && (customGraph?.graph.nodeCount ?? 0) > 0;
-  if (replacesCustom && !confirm("Esto reemplaza tu grafo personalizado por una copia de este ejemplo. ¿Seguir?")) {
-    return;
-  }
+// Abre el editor sobre un espacio personalizado. El espacio queda reservado
+// enseguida y cada cambio se guarda, así nada se pierde al recargar.
+function openEditor(slot: number, start: SampleGraph, viewport?: Viewport): void {
   player.pause();
-  const viewport = view?.viewport;
   view?.destroy();
   view = null;
-  const start = currentId === "custom" && customGraph ? customGraph : copyAsCustom(sample);
-  editor = new GraphEditor($("graph"), start, editorUi, viewport);
+  editingSlot = slot;
+  customSlots[slot] = start;
+  saveCustomSlots(customSlots);
+  const onChange = (g: SampleGraph) => {
+    customSlots[slot] = g;
+    saveCustomSlots(customSlots);
+  };
+  editor = new GraphEditor($("graph"), start, editorUi, onChange, viewport);
   ui.runPanel.hidden = true;
   ui.editorPanel.hidden = false;
 }
 
-function finishEditing(engine: EngineModule): void {
-  if (!editor) return;
-  customGraph = editor.finish();
+// Un personalizado se edita en su lugar; un ejemplo o el aleatorio, como copia en un espacio libre.
+function startEditing(): void {
+  const viewport = view?.viewport;
+  const slot = slotOf(currentId);
+  if (slot !== null) {
+    openEditor(slot, customSlots[slot] ?? emptyGraph(false, slotName(slot)), viewport);
+    return;
+  }
+  const free = freeSlot();
+  if (free !== -1) openEditor(free, copyAsCustom(sample, slotName(free)), viewport);
+}
+
+// Grafo vacío en un espacio libre, con la cámara centrada en el origen.
+function startNewGraph(): void {
+  const free = freeSlot();
+  if (free === -1) return;
+  const { width, height } = $("graph").getBoundingClientRect();
+  openEditor(free, emptyGraph(false, slotName(free)), { zoom: 1, pan: { x: width / 2, y: height / 2 } });
+}
+
+function closeEditor(engine: EngineModule, show: GraphId): void {
   editor = null;
-  saveCustom(customGraph);
+  editingSlot = null;
   ui.editorPanel.hidden = true;
   ui.runPanel.hidden = false;
-  ui.sampleHint.hidden = true;
+  showGraph(engine, show);
+}
 
-  selectSample("custom");
+/** Muestra un grafo y ajusta a él la lista de grafos, los algoritmos y la animación. */
+function showGraph(engine: EngineModule, id: GraphId): void {
+  selectSample(id);
   updateSampleOptions();
-  ensureCompatibleSample();
+  refreshAlgorithms();
   recompute(engine);
+}
+
+function finishEditing(engine: EngineModule): void {
+  if (!editor || editingSlot === null) return;
+  const slot = editingSlot;
+  customSlots[slot] = editor.finish();
+  saveCustomSlots(customSlots);
+  closeEditor(engine, customId(slot));
+}
+
+function deleteEditingGraph(engine: EngineModule): void {
+  if (!editor || editingSlot === null || !removeCustomGraph(editingSlot)) return;
+  editor.finish();
+  closeEditor(engine, "weighted");
+}
+
+// Botón 🗑 de la vista principal: borra el personalizado elegido sin abrir el editor.
+function deleteCurrentGraph(engine: EngineModule): void {
+  const slot = slotOf(currentId);
+  if (slot === null || !removeCustomGraph(slot)) return;
+  showGraph(engine, "weighted");
+}
+
+// El generador ocupa el lienzo mientras está abierto; "Cancelar" vuelve al grafo anterior.
+function startRandom(): void {
+  player.pause();
+  view?.destroy();
+  view = null;
+  generator = new RandomGraphPanel($("graph"), randomUi);
+  ui.runPanel.hidden = true;
+  ui.randomPanel.hidden = false;
+}
+
+function closeRandom(engine: EngineModule, use: boolean): void {
+  if (!generator) return;
+  const generated = generator.finish();
+  generator = null;
+  ui.randomPanel.hidden = true;
+  ui.runPanel.hidden = false;
+
+  if (use) randomGraph = generated;
+  showGraph(engine, use ? "random" : currentId);
 }
 
 fillNodeSelects();
 updateSampleOptions();
+updateGraphTools();
+refreshAlgorithms();
 
 async function main(): Promise<void> {
   const engine = await loadEngine();
   ui.sample.addEventListener("change", () => {
     selectSample(ui.sample.value as GraphId);
-    ui.sampleHint.hidden = true;
+    refreshAlgorithms();
     recompute(engine);
   });
   ui.algorithm.addEventListener("change", () => {
-    updateSampleOptions();
-    ensureCompatibleSample();
+    refreshAlgorithms();
     recompute(engine);
   });
+  // Clic en un algoritmo disponible del panel: lo elige.
+  ui.algorithmChips.addEventListener("click", (e) => {
+    const chipButton = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-algorithm]");
+    if (!chipButton || chipButton.disabled) return;
+    ui.algorithm.value = chipButton.dataset.algorithm!;
+    ui.algorithm.dispatchEvent(new Event("change"));
+  });
+  ui.deleteGraph.addEventListener("click", () => deleteCurrentGraph(engine));
   for (const select of [ui.source, ui.target]) {
     select.addEventListener("change", () => recompute(engine));
   }
   ui.editGraph.addEventListener("click", startEditing);
+  ui.newGraph.addEventListener("click", startNewGraph);
   ui.editorDone.addEventListener("click", () => finishEditing(engine));
+  ui.editorDelete.addEventListener("click", () => deleteEditingGraph(engine));
+  ui.randomGraph.addEventListener("click", startRandom);
+  ui.randomUse.addEventListener("click", () => closeRandom(engine, true));
+  ui.randomCancel.addEventListener("click", () => closeRandom(engine, false));
   ui.play.addEventListener("click", () => player.toggle());
   ui.forward.addEventListener("click", () => player.stepForward());
   ui.back.addEventListener("click", () => player.stepBack());
@@ -260,8 +443,10 @@ async function main(): Promise<void> {
   ui.speed.addEventListener("input", () => player.setDelay(1600 - Number(ui.speed.value)));
 
   document.addEventListener("keydown", (e) => {
-    // Sin atajos mientras se edita o se escribe en un campo.
-    if (editor || e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+    // Sin atajos mientras se edita, se genera o se escribe en un campo.
+    if (editor || generator || e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) {
+      return;
+    }
     if (e.key === "ArrowRight") player.stepForward();
     else if (e.key === "ArrowLeft") player.stepBack();
     else if (e.key === " ") {

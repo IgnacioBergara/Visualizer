@@ -15,21 +15,36 @@ Visualizador interactivo de algoritmos de grafos. Los algoritmos están escritos
 | **Prim** (O(V²)) | Árbol de cubrimiento mínimo creciendo desde un nodo | — |
 | **Kruskal** | Árbol de cubrimiento mínimo con unión de conjuntos | `MinHeap`, `MFSet` |
 
-La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo. Los grafos que no sirven para el algoritmo elegido aparecen deshabilitados con el motivo (por ejemplo, Dijkstra con pesos negativos).
+La app trae grafos de ejemplo para cada caso: ponderado no dirigido, dependencias (dirigido sin ciclos), pesos negativos y ciclo negativo.
+
+Primero se elige el grafo y la app indica **qué algoritmos se le pueden aplicar** (✓ sí, ! sí con una advertencia, ✗ no, con el motivo al pasar el mouse). Los incompatibles quedan deshabilitados; si se cambia a un grafo donde el algoritmo elegido no sirve, se pasa a otro algoritmo avisando por qué, sin tocar el grafo.
+
+## Grafos aleatorios
+
+Con **🎲 Azar** se genera un grafo eligiendo cantidad de nodos, densidad, rango de pesos, si es dirigido, si es un DAG y si tiene que ser conexo. La **semilla** hace que sea reproducible: la misma semilla con las mismas opciones da siempre el mismo grafo (los nodos se acomodan con un layout de fuerzas propio que también usa la semilla).
+
+Junto al grafo aparece **qué algoritmos se pueden correr**: los incompatibles (✗), los que se pueden correr con una advertencia (!), por ejemplo Kruskal sobre un grafo no conexo arma un bosque o Bellman-Ford va a encontrar un ciclo negativo, y los que no tienen problemas (✓).
 
 ## Editor de grafos
 
-Con **✎ Editar** se arma un grafo propio, partiendo de cero o de una copia del ejemplo que se está viendo:
+Se pueden guardar **hasta 3 grafos personalizados**, cada uno con su nombre:
+
+- **＋ Nuevo** crea un grafo vacío en un espacio libre.
+- **✎ Editar** edita el personalizado elegido; sobre un ejemplo o el aleatorio, crea una copia en un espacio libre (nunca pisa un grafo existente).
+- **🗑** borra el personalizado elegido para liberar su espacio (también se puede desde el editor, donde además se le cambia el nombre).
+
+En el editor:
 
 - Clic en el fondo: nuevo nodo. Clic en un nodo y luego en otro: arista.
 - Clic en una arista (o en su peso): cambiar el peso. Clic derecho: borrar. Arrastrar: mover.
 - Interruptor dirigido / no dirigido, **exportar e importar JSON** y guardado automático en el navegador.
 
-Formato del JSON:
+Formato del JSON (`name` es opcional):
 
 ```json
 {
   "version": 1,
+  "name": "Mi red",
   "directed": false,
   "nodes": [{ "label": "A", "x": 0, "y": 0 }, { "label": "B", "x": 150, "y": 0 }],
   "edges": [{ "from": 0, "to": 1, "weight": 4 }]
